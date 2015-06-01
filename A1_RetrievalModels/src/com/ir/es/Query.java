@@ -8,16 +8,13 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.common.xcontent.*;
 import org.tartarus.snowball.ext.PorterStemmer;
-import java.util.concurrent.ExecutionException;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
-import org.elasticsearch.action.termvector.TermVectorResponse;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.facet.statistical.StatisticalFacet;
-import org.elasticsearch.action.termvector.TermVectorRequestBuilder;
 import org.elasticsearch.search.aggregations.metrics.cardinality.Cardinality;
 import org.elasticsearch.search.aggregations.metrics.MetricsAggregationBuilder;
 
@@ -59,7 +56,40 @@ public class Query
         stemmer = new PorterStemmer();
     }
     
+    /*
+	(1) Create a map of all documents and respective lengths.
+    (2) Calculate the total and average document length for all
+        documents in the corpus. 
+    */
+    public static void initializeStatMaps()
+    	throws IOException
+    {
+    	docLenMap    = new HashMap<String, Double>();
+        tfwqMap      = new HashMap<String, Integer>();
+        okapiTfMap   = new HashMap<String, Double>();
+        tfIdfMap     = new HashMap<String, Double>();
+        okapibm25Map = new HashMap<String, Double>();
+        lmLaplaceMap = new HashMap<String, Double>();
+        lmJmMap      = new HashMap<String, Double>();
+    	br = new BufferedReader(new FileReader(Properties.FILE_DOCLEN));
+    	String line = "";
+    	
+    	while((line = br.readLine()) != null)
+    	{
+    		String[] docStats = line.split("\\s");
+    		docLenMap.put(docStats[0], Double.valueOf(docStats[1]));
+    		okapiTfMap.put(docStats[0], 0D);
+            tfIdfMap.put(docStats[0], 0D);
+            okapibm25Map.put(docStats[0], 0D);
+            lmLaplaceMap.put(docStats[0], 0D);
+            lmJmMap.put(docStats[0], 0D);
+    		allDocLength += Double.valueOf(docStats[1]);
+    	}
+    	avgDocLength = allDocLength / Properties.COUNT_DOC;
+    }
+    
     /* Get a map of all documents with an initial term frequency of 0 (zero) */
+    /*
     public static void initializeStatMaps()
         throws FileNotFoundException, IOException
     {
@@ -86,6 +116,7 @@ public class Query
             lmJmMap.put(docno, 0D);
         }
     }
+    */
     
     /* Reset all maps */
     public static void resetMaps()
@@ -543,59 +574,24 @@ public class Query
     
     /* Main method for unit testing */
     public static void main(String[] args)
-        throws IOException, InterruptedException, ExecutionException
     {
-        /* Starts client */
-        node = nodeBuilder().client(true).clusterName("leoscluster").node();
-        client = node.client();
-        
-        /* BLOCK 3 - Execute queries */
-        allDocLength = getStatsOnTextTerms(client, "ap_dataset", "document", null, null).getTotal();
-        avgDocLength = allDocLength / 84678;
-        initializeStatMaps();
-        parseAndExecQueries(createStopSet());
-        node.close();
-    }
-    
-    /* Under construction */
-    public static void createDocLengthMap()
-        throws ExecutionException, InterruptedException, IOException
-    {
-        TermVectorRequestBuilder builder = new TermVectorRequestBuilder(client, "ap_dataset", "document", "0");
-        TermVectorResponse response = builder.setSelectedFields("text")
-                                             .setTermStatistics(true)
-                                             .setFieldStatistics(true)
-                                             .execute()
-                                             .actionGet();
-        XContentBuilder xcbuilder = XContentFactory.contentBuilder(XContentType.JSON).prettyPrint();
-        response.toXContent(xcbuilder, ToXContent.EMPTY_PARAMS);
-        System.out.println(xcbuilder.toString());
+    	try
+    	{
+	        /* Starts client */
+	        node = nodeBuilder().client(true).clusterName("leoscluster").node();
+	        client = node.client();
+	        
+	        /* Calculate document statistics and execute queries */
+	        initializeStatMaps();
+	        parseAndExecQueries(createStopSet());
+    	}
+    	catch(IOException ioe)
+    	{
+    		ioe.printStackTrace();
+    	}   	finally
+    	{
+    		node.close();
+    	}
     }
 }
-
-/* Usage information */
-/* BLOCK 1 - Get vocabulary size */
-/*
-System.out.println("   [echo] Vocabulary size is " +
-                   getVocabularySize(client, "ap_dataset", "document", "text"));
-
-BufferedReader br = new BufferedReader(new FileReader("doclist.txt"));
-String line = "";
-StatisticalFacet facet = null;
-long totalLength = 0;
-*/
-
-/* BLOCK 2 - Get document length */
-/*
-while((line = br.readLine()) != null)
-{
-    facet = getStatsOnTextTerms(client, "ap_dataset", "document", "docno", line.split(" ")[1]);
-    // System.out.println("Document number " + line.split(" ")[1] + " has length " + facet.getTotal());
-    totalLength += facet.getTotal();
-}
-System.out.println("   [echo] Total length (by summation) is " + totalLength);
-facet = getStatsOnTextTerms(client, "ap_dataset", "document", null, null);
-System.out.println("   [echo] Total length is " + facet.getTotal());
-br.close();
-*/
 /* End of Query.java */

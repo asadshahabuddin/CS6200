@@ -25,5 +25,8 @@
 	<classpathentry kind="lib" path="lib/lucene-suggest-4.10.3.jar"/>
 	<classpathentry kind="lib" path="lib/spatial4j-0.4.1.jar"/>
 	<classpathentry kind="lib" path="lib/porter-stemmer-1.4.jar"/>
+	<classpathentry kind="lib" path="lib/gson-2.3.1.jar"/>
+	<classpathentry kind="lib" path="lib/java-json.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-core-2.5.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

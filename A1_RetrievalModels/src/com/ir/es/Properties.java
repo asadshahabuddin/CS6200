@@ -9,6 +9,7 @@ public class Properties
     public static final String FILE_STOPLIST  = "stoplist.txt";
     public static final String FILE_DOCLIST   = "doclist.txt";
     public static final String FILE_QUERY     = "query_desc.51-100.short.txt";
+    public static final String FILE_DOCLEN    = "doclen.txt";
     public static final String FILE_OKAPITF   = "okapitf.txt";
     public static final String FILE_TFIDF     = "tfidf.txt";
     public static final String FILE_OKAPIBM25 = "okapibm25.txt";
