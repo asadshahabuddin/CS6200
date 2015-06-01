@@ -57,41 +57,12 @@ public class Query
     }
     
     /*
-	(1) Create a map of all documents and respective lengths.
+    (1) Create a map of all documents and respective lengths.
     (2) Calculate the total and average document length for all
         documents in the corpus. 
     */
     public static void initializeStatMaps()
-    	throws IOException
-    {
-    	docLenMap    = new HashMap<String, Double>();
-        tfwqMap      = new HashMap<String, Integer>();
-        okapiTfMap   = new HashMap<String, Double>();
-        tfIdfMap     = new HashMap<String, Double>();
-        okapibm25Map = new HashMap<String, Double>();
-        lmLaplaceMap = new HashMap<String, Double>();
-        lmJmMap      = new HashMap<String, Double>();
-    	br = new BufferedReader(new FileReader(Properties.FILE_DOCLEN));
-    	String line = "";
-    	
-    	while((line = br.readLine()) != null)
-    	{
-    		String[] docStats = line.split("\\s");
-    		docLenMap.put(docStats[0], Double.valueOf(docStats[1]));
-    		okapiTfMap.put(docStats[0], 0D);
-            tfIdfMap.put(docStats[0], 0D);
-            okapibm25Map.put(docStats[0], 0D);
-            lmLaplaceMap.put(docStats[0], 0D);
-            lmJmMap.put(docStats[0], 0D);
-    		allDocLength += Double.valueOf(docStats[1]);
-    	}
-    	avgDocLength = allDocLength / Properties.COUNT_DOC;
-    }
-    
-    /* Get a map of all documents with an initial term frequency of 0 (zero) */
-    /*
-    public static void initializeStatMaps()
-        throws FileNotFoundException, IOException
+        throws IOException
     {
         docLenMap    = new HashMap<String, Double>();
         tfwqMap      = new HashMap<String, Integer>();
@@ -100,23 +71,22 @@ public class Query
         okapibm25Map = new HashMap<String, Double>();
         lmLaplaceMap = new HashMap<String, Double>();
         lmJmMap      = new HashMap<String, Double>();
-        br = new BufferedReader(new FileReader(Properties.FILE_DOCLIST));
-        String line = br.readLine();
+        br = new BufferedReader(new FileReader(Properties.FILE_DOCLEN));
+        String line = "";
         
         while((line = br.readLine()) != null)
         {
-            String docno = line.split("\\s")[1];
-            docLenMap.put(docno, getStatsOnTextTerms(client, "ap_dataset",
-                                                     "document", "docno",
-                                                     docno).getTotal());
-            okapiTfMap.put(docno, 0D);
-            tfIdfMap.put(docno, 0D);
-            okapibm25Map.put(docno, 0D);
-            lmLaplaceMap.put(docno, 0D);
-            lmJmMap.put(docno, 0D);
+            String[] docStats = line.split("\\s");
+            docLenMap.put(docStats[0], Double.valueOf(docStats[1]));
+            okapiTfMap.put(docStats[0], 0D);
+            tfIdfMap.put(docStats[0], 0D);
+            okapibm25Map.put(docStats[0], 0D);
+            lmLaplaceMap.put(docStats[0], 0D);
+            lmJmMap.put(docStats[0], 0D);
+            allDocLength += Double.valueOf(docStats[1]);
         }
+        avgDocLength = allDocLength / Properties.COUNT_DOC;
     }
-    */
     
     /* Reset all maps */
     public static void resetMaps()
@@ -175,7 +145,10 @@ public class Query
         }
         for(Map.Entry<String, Double> entry : lmJmMap.entrySet())
         {
-            lmjmq.add(new DocScorePair(entry.getKey(), entry.getValue()));
+            if(!entry.getValue().isNaN())
+            {
+                lmjmq.add(new DocScorePair(entry.getKey(), entry.getValue()));
+            }
         }
         okapitfq.reverse();
         tfidfq.reverse();
@@ -260,7 +233,7 @@ public class Query
             stemmer.stem();
             if(!tfwqMap.containsKey(stemmer.getCurrent()))
             {
-                tfwqMap.put(stemmer.getCurrent(), 0);
+                tfwqMap.put(stemmer.getCurrent(), 1);
             }
             tfwqMap.put(stemmer.getCurrent(),
                         tfwqMap.get(stemmer.getCurrent()) + 1);
@@ -375,8 +348,8 @@ public class Query
             {
                 tfwd = termFreqMap.get(key);
             }
-            lmLaplaceMap.put(key, lmLaplaceMap.get(key) + Model.plaplace(tfwd, entry.getValue()));
-            lmJmMap.put(key, lmJmMap.get(key) + Model.pjm(tfwd, entry.getValue(), (sumTfwd / allDocLength)));
+            lmLaplaceMap.put(key, lmLaplaceMap.get(key) + Model.plaplace(tfwd, docLenMap.get(key)));
+            lmJmMap.put(key, lmJmMap.get(key) + Model.pjm(tfwd, docLenMap.get(key), (sumTfwd / allDocLength)));
         }
     }
 
@@ -389,7 +362,7 @@ public class Query
      * @return
      */
     public static long getVocabularySize(Client client, String index,
-                                          String type  , String field)
+                                         String type  , String field)
     {
         @SuppressWarnings("rawtypes")
         MetricsAggregationBuilder aggregation = AggregationBuilders.cardinality("agg").field(field);
@@ -575,23 +548,23 @@ public class Query
     /* Main method for unit testing */
     public static void main(String[] args)
     {
-    	try
-    	{
-	        /* Starts client */
-	        node = nodeBuilder().client(true).clusterName("leoscluster").node();
-	        client = node.client();
-	        
-	        /* Calculate document statistics and execute queries */
-	        initializeStatMaps();
-	        parseAndExecQueries(createStopSet());
-    	}
-    	catch(IOException ioe)
-    	{
-    		ioe.printStackTrace();
-    	}   	finally
-    	{
-    		node.close();
-    	}
+        try
+        {
+            /* Starts client */
+            node = nodeBuilder().client(true).clusterName("leoscluster").node();
+            client = node.client();
+            
+            /* Calculate document statistics and execute queries */
+            initializeStatMaps();
+            parseAndExecQueries(createStopSet());
+        }
+        catch(IOException ioe)
+        {
+            ioe.printStackTrace();
+        }       finally
+        {
+            node.close();
+        }
     }
 }
 /* End of Query.java */

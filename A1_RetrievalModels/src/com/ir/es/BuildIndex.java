@@ -199,7 +199,7 @@ public class BuildIndex
                     {
                         while(!(line = br.readLine()).contains("</TEXT>"))
                         {
-                            text.append(line);
+                            text.append(line + " ");
                         }
                     }
                 }

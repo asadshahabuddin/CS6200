@@ -37,8 +37,12 @@ public class Model
     /* Unigram LM with Jelinek-Mercer smoothing */
     public static double pjm(double tfwd, double docLength, double bgModel)
     {
-        return Math.log((Properties.L * tfwd / docLength) +
-                        (Properties.LL * bgModel));
+        if(docLength != 0)
+        {
+            return Math.log((Properties.L * tfwd / docLength) +
+                            (Properties.LL * bgModel));
+        }
+        return Math.log(Properties.LL * bgModel);
     }
     
     /* Main method for unit testing */
