@@ -1,11 +1,14 @@
 package com.ir.token;
 
+/* Import list */
+import java.io.Serializable;
+
 /**
  * Author : Asad Shahabuddin
  * Created: Jun 5, 2015
  */
 
-public class Tuple
+public class Tuple implements Serializable
 {
     private long termId;
     private long docId;
