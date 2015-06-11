@@ -22,13 +22,20 @@ public class Properties
     /* Regular expression patterns */
     public static final String REGEX_TOKEN = "\\w+(\\.?\\w+)*";
 
-    /* Files */
+    /* Keys */
+    public static final int TYPE_DOC  = 0;
+    public static final int TYPE_TERM = 1;
+
+    /* Directories and files */
     public static final String FILE_STOPLIST    = "stoplist.txt";
     public static final String FILE_DOC_IDX     = "doc.idx";
+    public static final String FILE_DOC_TXT     = "docs.txt";
     public static final String FILE_TERM_IDX    = "term.idx";
+    public static final String FILE_TERM_TXT    = "terms.txt";
     public static final String FILE_STATS       = "stats.txt";
     public static final String FILE_TUPLES_OBJ  = "tuple.idx";
     public static final String FILE_TUPLES_TEXT = "tuples.txt";
-    public static final String FILE_INDEX       = "index.txt";
+    public static final String DIR_IDX          = "E:/Home/Repository/Java/IdeaProjects/A2_Indexing/index";
+    public static final String DIR_CATALOG      = "E:/Home/Repository/Java/IdeaProjects/A2_Indexing/catalog";
 }
 /* End of Properties.java */

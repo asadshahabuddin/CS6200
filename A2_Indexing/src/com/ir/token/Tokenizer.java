@@ -50,11 +50,11 @@ public class Tokenizer
      *            A set of all stop words.
      * @throws IOException
      */
-    public HashSet<String> createStopSet()
-            throws IOException
+    public static HashSet<String> createStopSet()
+        throws IOException
     {
         HashSet<String> stopSet = new HashSet<String>();
-        br = new BufferedReader(new FileReader(Properties.FILE_STOPLIST));
+        BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_STOPLIST));
         String line = "";
 
         while((line = br.readLine()) != null)
@@ -72,10 +72,9 @@ public class Tokenizer
      * @param fileName
      *            File name.
      */
-    public void tokenizeFile(String fileName)
-            throws IOException
+    public void tokenizeFile(String fileName, HashSet<String> stopSet)
+        throws IOException
     {
-        HashSet<String> stopSet = createStopSet();
         for(Map.Entry<String, String> entry : createDocInfoMap(fileName).entrySet())
         {
             tuples.addAll(tokenizeDocument(entry.getKey(), entry.getValue(), stopSet));
@@ -93,7 +92,7 @@ public class Tokenizer
      *            A map of document numbers and the corresponding text.
      */
     public HashMap<String, String> createDocInfoMap(String fileName)
-            throws IOException
+        throws IOException
     {
         HashMap<String, String> docInfoMap = new HashMap<String, String>();
         br = new BufferedReader(new FileReader(fileName));
@@ -121,7 +120,7 @@ public class Tokenizer
                     }
                 }
 
-                docInfoMap.put(docNo, text.toString());
+                docInfoMap.put(docNo, text.toString().trim());
                 text  = new StringBuilder();
             }
         }
@@ -151,7 +150,8 @@ public class Tokenizer
 
         while(matcher.find())
         {
-            if(stopSet.contains(matcher.group(0).toLowerCase()))
+            if(stopSet.contains(matcher.group(0).toLowerCase()) ||
+               matcher.group(0).length() == 0)
             {
                 continue;
             }
@@ -185,17 +185,19 @@ public class Tokenizer
      * to the file system.
      */
     public void writeObjectsToFS()
-            throws IOException
+        throws IOException
     {
         /* Serialize the inverted document index */
         ObjectOutputStream out = new ObjectOutputStream(
                 new FileOutputStream(Properties.FILE_DOC_IDX));
         out.writeObject(docMap);
+        out.close();
 
         /* Serialize the inverted term index */
         out = new ObjectOutputStream(
                 new FileOutputStream(Properties.FILE_TERM_IDX));
         out.writeObject(termMap);
+        out.close();
 
         /* Serialize the list of tuples */
         /*
@@ -211,10 +213,7 @@ public class Tokenizer
         fw.write(Properties.KEY_VOCAB_SIZE + " " + (termId + 1) + "\n");
         fw.write(Properties.KEY_ALL_DOC_LEN + " " + allDocLength + "\n");
         fw.write(Properties.KEY_AVG_DOC_LEN + " " + (allDocLength / docCount) + "\n");
-
-        /* Close output streams */
         fw.close();
-        out.close();
     }
 
     /**
@@ -222,15 +221,47 @@ public class Tokenizer
      * @throws IOException
      */
     private void writeTuplesToFS()
-            throws IOException
+        throws IOException
     {
         fw = new FileWriter(Properties.FILE_TUPLES_TEXT, true);
         for(Tuple tuple : tuples)
         {
             fw.write(tuple.getTermId() + " " +
-                    tuple.getDocId() + " " +
-                    tuple.getPos() + "\n");
+                     tuple.getDocId() + " " +
+                     tuple.getPos() + "\n");
         }
+        fw.close();
+    }
+
+    /**
+     * Write the map identified by the key to the file system.
+     * @param key
+     *            Identifier for the map type.
+     */
+    public void writeMapsToFS(int key)
+        throws IOException, ClassNotFoundException
+    {
+        String file = "";
+        StringBuilder sb = new StringBuilder();
+        HashMap<String, Long> typeMap = new HashMap<String, Long>();
+
+        if(key == Properties.TYPE_DOC)
+        {
+            file    = Properties.FILE_DOC_TXT;
+            typeMap = getDocMap();
+        }
+        else
+        {
+            file    = Properties.FILE_TERM_TXT;
+            typeMap = getTermMap();
+        }
+
+        fw = new FileWriter(file, true);
+        for (String entry : typeMap.keySet())
+        {
+            sb.append(entry + " " + typeMap.get(entry) + "\n");
+        }
+        fw.write(sb.toString());
         fw.close();
     }
 
@@ -240,7 +271,7 @@ public class Tokenizer
      *            The inverted document index.
      */
     public static HashMap<String, Long> getDocMap()
-            throws IOException, ClassNotFoundException
+        throws IOException, ClassNotFoundException
     {
         ObjectInputStream in = new ObjectInputStream(
                 new FileInputStream(Properties.FILE_DOC_IDX));
@@ -324,11 +355,16 @@ public class Tokenizer
         try
         {
             Tokenizer t = new Tokenizer();
+            HashSet<String> stopSet = createStopSet();
+            System.out.println(">Creation of tuples");
             for (File file : new File("E:/Home/Repository/Java/IdeaProjects/A2_Indexing/input").listFiles())
             {
-                t.tokenizeFile(file.getAbsolutePath());
+                System.out.println("   [echo] Processing file " + file.getName());
+                t.tokenizeFile(file.getAbsolutePath(), stopSet);
             }
+            System.out.println("\n>Sorting the tuples");
             t.sortTuples();
+            System.out.println(">Writing all the objects to the file system\n");
             t.writeObjectsToFS();
 
             /* Output to console */

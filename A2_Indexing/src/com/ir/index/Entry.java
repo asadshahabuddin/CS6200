@@ -14,7 +14,16 @@ public class Entry
     private ArrayList<Long> offs;
 
     /**
-     * Constructor
+     * Constructor 1.
+     */
+    public Entry()
+    {
+        tf   = 0;
+        offs = new ArrayList<Long>();
+    }
+
+    /**
+     * Constructor 2.
      * @param tf
      *            Term frequency in the document.
      * @param offs
