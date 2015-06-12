@@ -144,14 +144,17 @@ public class Indexer
 
         while(matcher.find())
         {
-            /* Do not process stop words */
-            if(stopSet.contains(matcher.group(0).toLowerCase()))
+            /* Do not process stop words, et cetera. */
+            String term = Utils.filterText(matcher.group(0).toLowerCase());
+            if(stopSet.contains(term) ||
+               term.length() == 0 ||
+               (term.length() == 1 && term.charAt(0) > 57))
             {
                 continue;
             }
 
             /* Stem individual terms */
-            stemmer.setCurrent(matcher.group(0).toLowerCase());
+            stemmer.setCurrent(term);
             stemmer.stem();
             long termId = termMap.get(stemmer.getCurrent());
 
@@ -351,6 +354,117 @@ public class Indexer
     }
 
     /**
+     * Merge all the indices into a master index.
+     * Revision 2 of merge indices has a much better time complexity.
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
+    public void mergeIndices2()
+        throws IOException, ClassNotFoundException
+    {
+        int n = 85;    /* Remove hard-coding */
+        long vocabSize = Long.valueOf(Tokenizer.
+                                      getStatistics().
+                                      get(Properties.KEY_VOCAB_SIZE));
+        HashMap<Long, Long>[] catalogues = getCatalogues(n);
+        RandomAccessFile[] files = getIdxFiles(n);
+        FileWriter fw = new FileWriter(Properties.DIR_IDX + "/part0.idx", true);
+        catalog = new HashMap<Long, Long>();
+        StringBuilder sb = new StringBuilder();
+        String line = "";
+        long curOff = 0;
+
+        Utils.cout("\n>Unifying indices into a master index\n");
+        for(long i = 0; i < vocabSize; i++)
+        {
+            sb.append(i);
+            for(int j = 0; j < n; j++)
+            {
+                if(catalogues[j].containsKey(i))
+                {
+                    files[j].seek(catalogues[j].get(i));
+                    line = files[j].readLine();
+                    sb.append(line.substring(line.indexOf(" ")));
+                }
+            }
+            fw.write(sb.append("\n").toString());
+            catalog.put(i, curOff);
+            curOff += sb.length();
+            sb = new StringBuilder();
+
+            /* Log every 1000th iteration */
+            if(i % 1000 == 0)
+            {
+                Utils.echo("Passed term with ID " + i);
+            }
+        }
+
+        fw.close();
+        serializeCatalog(0);
+        Utils.cout("\n>Cleaning up");
+        cleanup(n, files);
+    }
+
+    /**
+     * Get an array of all the catalogues.
+     * @param n
+     *            The total number of partial index files.
+     * @return
+     *            An array of all the catalogues.
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
+    public HashMap<Long, Long>[] getCatalogues(int n)
+        throws IOException, ClassNotFoundException
+    {
+        Utils.cout(">Loading all the catalogues...\n");
+        HashMap<Long, Long>[] catalogues = new HashMap[n];
+        for(int i = 1; i <= n; i++)
+        {
+            catalogues[i - 1] = getCatalog(i);
+        }
+        Utils.cout("Completed.\n");
+        return catalogues;
+    }
+
+    /**
+     * Get an array on all the index file objects.
+     * @param n
+     *            The total number of partial index files.
+     * @return
+     *            An array of all the index file objects.
+     * @throws IOException
+     */
+    public RandomAccessFile[] getIdxFiles(int n)
+        throws IOException
+    {
+        RandomAccessFile[] files = new RandomAccessFile[n];
+        for(int i = 1; i <= n; i++)
+        {
+            files[i - 1] = new RandomAccessFile(
+                Properties.DIR_IDX + "/part" + i + ".idx", "r");
+        }
+        return files;
+    }
+
+    /**
+     * Execute cleanup of all the partial indices and catalog files.
+     * @param n
+     *            The total number of partial index files.
+     */
+    public void cleanup(int n, RandomAccessFile[] files)
+        throws IOException
+    {
+        for(int i = 1; i <= n; i++)
+        {
+            new File(Properties.DIR_CATALOG + "/catalog" + i + ".txt").delete();
+            new File(Properties.DIR_CATALOG + "/part"    + i + ".catalog").delete();
+            files[i - 1].close();
+            new File(Properties.DIR_IDX     + "/part"    + i + ".idx").delete();
+        }
+    }
+
+    /**
      * Main method for unit testing.
      * @param args
      *            Program arguments.
@@ -367,8 +481,10 @@ public class Indexer
         try
         {
             Indexer i = new Indexer();
+            /* Create the partial indices */
             i.index("E:/Home/Repository/Java/IdeaProjects/A2_Indexing/input");
-            i.mergeIndices();
+            /* Merge the partial indices into a unified index */
+            i.mergeIndices2();
         }
         catch(IOException ioe)
         {
@@ -380,7 +496,7 @@ public class Indexer
         }
         finally
         {
-            Utils.elapsedTime(startTime, "Creation of index completed.");
+            Utils.elapsedTime(startTime, "\nCreation of index completed.");
         }
     }
 }

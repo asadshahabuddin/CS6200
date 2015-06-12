@@ -1,5 +1,8 @@
 package com.ir.global;
 
+/* Import list */
+import java.util.HashSet;
+
 /**
  * Author : Asad Shahabuddin
  * Created: Jun 5, 2015
@@ -37,5 +40,21 @@ public class Properties
     public static final String FILE_TUPLES_TEXT = "tuples.txt";
     public static final String DIR_IDX          = "E:/Home/Repository/Java/IdeaProjects/A2_Indexing/index";
     public static final String DIR_CATALOG      = "E:/Home/Repository/Java/IdeaProjects/A2_Indexing/catalog";
+
+    /* Punctuations */
+    public static HashSet<Character> PUNCTUATIONS = new HashSet<Character>();
+
+    static
+    {
+        PUNCTUATIONS.add('.');
+        PUNCTUATIONS.add(',');
+        PUNCTUATIONS.add(';');
+        PUNCTUATIONS.add(':');
+        PUNCTUATIONS.add('"');
+        PUNCTUATIONS.add('(');
+        PUNCTUATIONS.add(')');
+        PUNCTUATIONS.add('!');
+        PUNCTUATIONS.add('_');
+    }
 }
 /* End of Properties.java */

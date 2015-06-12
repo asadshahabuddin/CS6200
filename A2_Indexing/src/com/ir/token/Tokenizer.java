@@ -3,6 +3,7 @@ package com.ir.token;
 /* Import list */
 import java.io.*;
 import java.util.*;
+import com.ir.global.Utils;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import com.ir.global.Properties;
@@ -150,13 +151,15 @@ public class Tokenizer
 
         while(matcher.find())
         {
-            if(stopSet.contains(matcher.group(0).toLowerCase()) ||
-               matcher.group(0).length() == 0)
+            String term = Utils.filterText(matcher.group(0).toLowerCase());
+            if(stopSet.contains(term) ||
+               term.length() == 0 ||
+               (term.length() == 1 && term.charAt(0) > 57))
             {
                 continue;
             }
 
-            stemmer.setCurrent(matcher.group(0).toLowerCase());
+            stemmer.setCurrent(term);
             stemmer.stem();
             // String term = stemmer.getCurrent();
             if(!termMap.containsKey(stemmer.getCurrent()))
@@ -185,7 +188,7 @@ public class Tokenizer
      * to the file system.
      */
     public void writeObjectsToFS()
-        throws IOException
+        throws IOException, ClassNotFoundException
     {
         /* Serialize the inverted document index */
         ObjectOutputStream out = new ObjectOutputStream(
@@ -206,6 +209,8 @@ public class Tokenizer
         out.writeObject(tuples);
         */
         writeTuplesToFS();
+        writeMapsToFS(Properties.TYPE_DOC);
+        writeMapsToFS(Properties.TYPE_TERM);
 
         /* Write document statistics to the file system */
         fw = new FileWriter(Properties.FILE_STATS);
@@ -383,6 +388,10 @@ public class Tokenizer
         catch(IOException ioe)
         {
             ioe.printStackTrace();
+        }
+        catch(ClassNotFoundException cnfe)
+        {
+            cnfe.printStackTrace();
         }
         finally
         {

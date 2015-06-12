@@ -47,5 +47,27 @@ public class Utils
         System.out.println("Elapsed time: " + elapsedTime + " second(s)");
         return System.nanoTime();
     }
+
+    /**
+     * Filter punctuation and unnecessary character
+     * @param s
+     *           The word to be filtered.
+     * @return
+     *           The filtered word.
+     */
+    public static String filterText(String s)
+    {
+        while(s.length() > 0 &&
+                Properties.PUNCTUATIONS.contains(s.charAt(s.length() - 1)))
+        {
+            s = s.substring(0, s.length() - 1);
+        }
+        while(s.length() > 0 &&
+                Properties.PUNCTUATIONS.contains(s.charAt(0)))
+        {
+            s = s.substring(1, s.length());
+        }
+        return s;
+    }
 }
 /* End of Utils.java */
