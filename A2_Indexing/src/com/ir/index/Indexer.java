@@ -206,8 +206,8 @@ public class Indexer
     }
 
     /**
-     * Serialize the catalog corresponding to an index part file denoted
-     * by the index argument.
+     * Serialize the catalog corresponding to a part-index file denoted
+     * by the argument.
      */
     public void serializeCatalog(int idx)
         throws IOException
@@ -228,6 +228,11 @@ public class Indexer
         fw.close();
     }
 
+    /**
+     * Merge all the part-indices into a single index.
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     public void mergeIndices()
         throws IOException, ClassNotFoundException
     {
@@ -245,6 +250,15 @@ public class Indexer
         }
     }
 
+    /**
+     * Merge the two indices identified by the arguments.
+     * @param idx1
+     *            Identifier for the first index file.
+     * @param idx2
+     *            Identifier for the second index file.
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
     public void mergeIndicesWithIdx(int idx1, int idx2)
         throws IOException, ClassNotFoundException
     {
@@ -264,6 +278,7 @@ public class Indexer
         String line = "";
         long curOff = 0;
 
+        /* Merge the two index files based on term ids */
         while((line = br1.readLine()) != null)
         {
             Long termId = Long.valueOf(line.substring(0, line.indexOf(" ")));
@@ -281,6 +296,7 @@ public class Indexer
         br1.close();
         raf.seek(0);
 
+        /* Merge the remainder of the second index file */
         while((line = raf.readLine()) != null)
         {
             Long termId = Long.valueOf(line.substring(0, line.indexOf(" ")));
@@ -291,19 +307,19 @@ public class Indexer
                 curOff += line.length() + 1;
             }
         }
-        serializeCatalog(idx1);
         fw.close();
         raf.close();
+        serializeCatalog(idx1);
 
-        /* Delete part1.idx and rename part0.idx to part1.idx */
+        /* Delete the first index file and rename part0.idx */
         file1.delete();
         file2.delete();
         new File(Properties.DIR_IDX + "/part0.idx").renameTo(file1);
     }
 
     /**
-     * Create and return a map of Document IDs and their corresponding 'Entry'
-     * object from a line.
+     * Create a map of Document IDs and their corresponding 'Entry' objects
+     * from a line.
      * @param s
      *            The line to parse.
      * @return
@@ -340,13 +356,8 @@ public class Indexer
      *            Program arguments.
      */
     public static void main(String[] args)
-        throws IOException, ClassNotFoundException
     {
-        Indexer i = new Indexer();
-        i.mergeIndices();
-
         /* Calculate start time */
-        /*
         long startTime = System.nanoTime();
         Utils.cout("\n");
         Utils.cout("=======\n");
@@ -357,16 +368,20 @@ public class Indexer
         {
             Indexer i = new Indexer();
             i.index("E:/Home/Repository/Java/IdeaProjects/A2_Indexing/input");
+            i.mergeIndices();
         }
         catch(IOException ioe)
         {
             ioe.printStackTrace();
         }
+        catch(ClassNotFoundException cnfe)
+        {
+            cnfe.printStackTrace();
+        }
         finally
         {
             Utils.elapsedTime(startTime, "Creation of index completed.");
         }
-        */
     }
 }
 /* End of Indexer.java */
