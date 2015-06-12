@@ -60,6 +60,11 @@ public class Entry
         offs.add(off);
     }
 
+    public void addOffs(ArrayList<Long> newOffs)
+    {
+        offs.addAll(newOffs);
+    }
+
     public ArrayList<Long> getOffs()
     {
         return offs;

@@ -70,6 +70,23 @@ public class Indexer
     }
 
     /**
+     * Get the catalog for an index file identified by the argument.
+     * @return
+     *           The catalog for the specified index.
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
+    public static HashMap<Long, Long> getCatalog(int idx)
+            throws IOException, ClassNotFoundException
+    {
+        ObjectInputStream in = new ObjectInputStream(
+                new FileInputStream(Properties.DIR_CATALOG + "/part" + idx + ".catalog"));
+        HashMap<Long, Long> catalog = (HashMap<Long, Long>) in.readObject();
+        in.close();
+        return catalog;
+    }
+
+    /**
      * Index all files in a directory.
      * @param dir
      *           The directory containing all the files to be indexed.
@@ -85,6 +102,8 @@ public class Indexer
         /* Write the remaining index and the catalog to the file system */
         writeIndexToFS(++fileIdx);
         serializeCatalog(fileIdx);
+        index.clear();
+        catalog.clear();
     }
 
     /**
@@ -209,16 +228,126 @@ public class Indexer
         fw.close();
     }
 
+    public void mergeIndices()
+        throws IOException, ClassNotFoundException
+    {
+        Utils.cout("\n>Unifying indices into a master index\n");
+        int n = 85;
+        int jump = 1;
+        while(jump < n)
+        {
+            for (int i = 1; i <= n; i += jump * 2)
+            {
+                Utils.echo("Merging indices " + i + " and " + (jump + i));
+                mergeIndicesWithIdx(i, jump + i);
+            }
+            jump *= 2;
+        }
+    }
+
+    public void mergeIndicesWithIdx(int idx1, int idx2)
+        throws IOException, ClassNotFoundException
+    {
+        File file1 = new File(Properties.DIR_IDX + "/part" + idx1 + ".idx");
+        File file2 = new File(Properties.DIR_IDX + "/part" + idx2 + ".idx");
+        if(!file1.exists() || !file2.exists())
+        {
+            return;
+        }
+
+        BufferedReader br1 = new BufferedReader(new FileReader(file1));
+        RandomAccessFile raf = new RandomAccessFile(file2, "r");
+        FileWriter fw = new FileWriter(Properties.DIR_IDX + "/part0.idx", true);
+        catalog = getCatalog(idx1);
+        HashMap<Long, Long> catalog2 = getCatalog(idx2);
+        HashSet<Long> oldTerms = new HashSet<Long>();
+        String line = "";
+        long curOff = 0;
+
+        while((line = br1.readLine()) != null)
+        {
+            Long termId = Long.valueOf(line.substring(0, line.indexOf(" ")));
+            if(catalog2.containsKey(termId))
+            {
+                raf.seek(catalog2.get(termId));
+                String newLine = raf.readLine();
+                line += newLine.substring(newLine.indexOf(" "));
+            }
+            fw.write(line + "\n");
+            catalog.put(termId, curOff);
+            oldTerms.add(termId);
+            curOff += line.length() + 1;
+        }
+        br1.close();
+        raf.seek(0);
+
+        while((line = raf.readLine()) != null)
+        {
+            Long termId = Long.valueOf(line.substring(0, line.indexOf(" ")));
+            if(!oldTerms.contains(termId))
+            {
+                fw.write(line + "\n");
+                catalog.put(termId, curOff);
+                curOff += line.length() + 1;
+            }
+        }
+        serializeCatalog(idx1);
+        fw.close();
+        raf.close();
+
+        /* Delete part1.idx and rename part0.idx to part1.idx */
+        file1.delete();
+        file2.delete();
+        new File(Properties.DIR_IDX + "/part0.idx").renameTo(file1);
+    }
+
+    /**
+     * Create and return a map of Document IDs and their corresponding 'Entry'
+     * object from a line.
+     * @param s
+     *            The line to parse.
+     * @return
+     *            The resulting map of Document IDs and the corresponding
+     *            'Entry' object.
+     */
+    public HashMap<String, Entry> getIdxEntryMap(String s)
+    {
+        HashMap<String, Entry> idxEntryMap = new HashMap<String, Entry>();
+        String[] words = s.split("\\s");
+
+        for(int i = 1; i < words.length; i++)
+        {
+            Entry entry = new Entry();
+            int j;
+            for(j = i + 2;
+                j < words.length &&
+                j < (i + 2 + Integer.valueOf(words[i + 1]));
+                j++)
+            {
+                entry.addTf();
+                entry.addOff(Long.valueOf(words[j]));
+            }
+            idxEntryMap.put(words[i], entry);
+            i = j - 1;
+        }
+
+        return idxEntryMap;
+    }
+
     /**
      * Main method for unit testing.
      * @param args
      *            Program arguments.
      */
     public static void main(String[] args)
+        throws IOException, ClassNotFoundException
     {
-        /* Calculate start time */
-        long startTime = System.nanoTime();
+        Indexer i = new Indexer();
+        i.mergeIndices();
 
+        /* Calculate start time */
+        /*
+        long startTime = System.nanoTime();
         Utils.cout("\n");
         Utils.cout("=======\n");
         Utils.cout("INDEXER\n");
@@ -237,6 +366,7 @@ public class Indexer
         {
             Utils.elapsedTime(startTime, "Creation of index completed.");
         }
+        */
     }
 }
 /* End of Indexer.java */
