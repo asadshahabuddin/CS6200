@@ -63,9 +63,9 @@ public class Formulae
      * @return
      *           The proximity score.
      */
-    public static double proximitySearch(long minSpan, int termCount)
+    public static double proximitySearch(long minSpan, int termCount, int docLen)
     {
-        return Math.pow(Properties.LAMBDA, (minSpan - termCount) / (double) termCount);
+        return ((Properties.C - minSpan) * termCount) / (double) (docLen + 158039);
     }
 }
 /* End of Formulae.java */

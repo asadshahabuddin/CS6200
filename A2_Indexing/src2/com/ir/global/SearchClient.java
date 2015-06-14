@@ -147,7 +147,7 @@ public class SearchClient
         try
         {
             int ttf = 0;
-            HashMap<String, Entry> idxEntryMap = queryTerm("arm");
+            HashMap<String, Entry> idxEntryMap = queryTerm("govern");
             for(Map.Entry<String, Entry> entry : idxEntryMap.entrySet())
             {
                 ttf += entry.getValue().getTf();

@@ -30,7 +30,7 @@ public class Properties
     public static final double V       = 178050;
     public static final double L       = 0.22;
     public static final double LL      = 1 - L;
-    public static final double LAMBDA  = 0.8;
+    public static final double C       = 1500;
 
     /* Keys */
     public static final int TYPE_DOC    = 0;
@@ -60,6 +60,7 @@ public class Properties
     public static final String FILE_OKAPIBM25   = "okapibm25.txt";
     public static final String FILE_LMLAPLACE   = "lmlaplace.txt";
     public static final String FILE_LMJM        = "lmjm.txt";
+    public static final String FILE_PROX_SEARCH = "proximity-search.txt";
 
     /* Regular expression patterns */
     public static final String REGEX_TOKEN = "\\w+(\\.?\\w+)*";

@@ -167,10 +167,10 @@ public class Query
         int rank = 0;
 
         while((dfp1 = okapitfq.remove())   != null &&
-                (dfp2 = tfidfq.remove())     != null &&
-                (dfp3 = okapibm25q.remove()) != null &&
-                (dfp4 = lmlaplaceq.remove()) != null &&
-                (dfp5 = lmjmq.remove()) != null)
+              (dfp2 = tfidfq.remove())     != null &&
+              (dfp3 = okapibm25q.remove()) != null &&
+              (dfp4 = lmlaplaceq.remove()) != null &&
+              (dfp5 = lmjmq.remove()) != null)
         {
             buffer1.append(queryNum + " Q0 " + dfp1.getDocNo() + " " +
                     ++rank   + " "    + dfp1.getScore() + " Exp\n");

@@ -36,13 +36,13 @@ public class Queue
     }
 
     /* Constructor */
-    protected Queue()
+    public Queue()
     {
         queue = new PriorityQueue<DocScorePair>(100, new PriorityQueueSort());
     }
 
     /* Add an element to the priority queue */
-    protected boolean add(DocScorePair dfp)
+    public boolean add(DocScorePair dfp)
     {
         if(dfp == null)
         {
@@ -57,7 +57,7 @@ public class Queue
     }
 
     /* Poll the priority queue */
-    protected DocScorePair remove()
+    public DocScorePair remove()
     {
         if(queue.size() == 0)
         {
@@ -67,7 +67,7 @@ public class Queue
     }
 
     /* Reverse the priority queue */
-    protected void reverse()
+    public void reverse()
     {
         PriorityQueue<DocScorePair> reverseQueue =
             new PriorityQueue<DocScorePair>(queue.size(), new PriorityQueueReverse());
