@@ -11,7 +11,7 @@ import java.io.IOException;
 import com.ir.global.Utils;
 import java.io.BufferedReader;
 import com.ir.global.Properties;
-import com.ir.global.IndexClient;
+import com.ir.global.SearchClient;
 import org.tartarus.snowball.ext.PorterStemmer;
 
 /**
@@ -21,6 +21,8 @@ import org.tartarus.snowball.ext.PorterStemmer;
 
 public class Query
 {
+    private static boolean stopSwitch;
+    private static boolean stemSwitch;
     private static BufferedReader br;
     private static double avgDocLength;
     private static double allDocLength;
@@ -144,7 +146,7 @@ public class Query
 
     /* Write the content of queues to respective files */
     public static void writeQueuesToFS(String queryNum)
-            throws IOException
+        throws IOException
     {
         System.out.println("   [echo] Start of FS ops for query " + queryNum);
         StringBuilder buffer1 = new StringBuilder();
@@ -214,14 +216,17 @@ public class Query
             {
                 term = Utils.filterText(term).toLowerCase();
             }
-            stemmer.setCurrent(term);
-            stemmer.stem();
-            if(!tfwqMap.containsKey(stemmer.getCurrent()))
+            if(stemSwitch)
             {
-                tfwqMap.put(stemmer.getCurrent(), 1);
+                stemmer.setCurrent(term);
+                stemmer.stem();
+                term = stemmer.getCurrent();
             }
-            tfwqMap.put(stemmer.getCurrent(),
-                        tfwqMap.get(stemmer.getCurrent()) + 1);
+            if(!tfwqMap.containsKey(term))
+            {
+                tfwqMap.put(term, 1);
+            }
+            tfwqMap.put(term, tfwqMap.get(term) + 1);
         }
     }
 
@@ -265,9 +270,13 @@ public class Query
                 {
                     continue;
                 }
-                stemmer.setCurrent(term);
-                stemmer.stem();
-                execQuery(stemmer.getCurrent());
+                if(stemSwitch)
+                {
+                    stemmer.setCurrent(term);
+                    stemmer.stem();
+                    term = stemmer.getCurrent();
+                }
+                execQuery(term);
                 termSet.add(term);
             }
             sortAndFilterMaps();
@@ -279,9 +288,9 @@ public class Query
 
     /* Execute a query */
     public static void execQuery(String term)
-        throws IOException, ClassNotFoundException
+        throws IOException
     {
-        termFreqMap = IndexClient.queryTerm(term);
+        termFreqMap = SearchClient.queryTerm(term);
         String key = "";
         double sumTfwd = 0;
 
@@ -325,11 +334,24 @@ public class Query
     /* Main method for unit testing */
     public static void main(String[] args)
     {
+        if(args.length < 2)
+        {
+            Utils.error("A minimum of 2 arguments are required.");
+            Utils.echo("-stop=true/false -stem=true/false");
+            System.exit(-1);
+        }
+
+        stopSwitch = args[0].equalsIgnoreCase("-stop=true");
+        stemSwitch = args[1].equalsIgnoreCase("-stem=true");
+        Utils.echo("Stop word removal has been set to " + stopSwitch);
+        Utils.echo("Stemming has been set to " + stemSwitch + "\n");
+
         try
         {
             /* Calculate document statistics and execute queries */
+            HashSet<String> stopSet = stopSwitch ? Utils.createStopSet() : new HashSet<String>();
             initializeStatMaps();
-            parseAndExecQueries(Utils.createStopSet());
+            parseAndExecQueries(stopSet);
         }
         catch(IOException ioe)
         {
