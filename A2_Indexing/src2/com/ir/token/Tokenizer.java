@@ -16,10 +16,16 @@ import org.tartarus.snowball.ext.PorterStemmer;
 
 public class Tokenizer
 {
+    /* Static data members */
+    private static boolean stopSwitch;
+    private static boolean stemSwitch;
+
+    /* Non-static data members */
     private long termId;
     private long docId;
-    private HashMap<String, Long> termMap;
     private HashMap<String, Long> docMap;
+    private HashMap<String, Long> termMap;
+    private HashMap<String, Integer> docLenMap;
     private ArrayList<Tuple> tuples;
     private Pattern pattern;
     private Matcher matcher;
@@ -36,35 +42,14 @@ public class Tokenizer
     {
         termId       = -1;
         docId        = -1;
-        termMap      = new HashMap<String, Long>();
         docMap       = new HashMap<String, Long>();
+        termMap      = new HashMap<String, Long>();
+        docLenMap    = new HashMap<String, Integer>();
         tuples       = new ArrayList<Tuple>();
         pattern      = Pattern.compile(Properties.REGEX_TOKEN);
         docCount     = 0;
         allDocLength = 0;
         stemmer      = new PorterStemmer();
-    }
-
-    /**
-     * Create a set of all stop words.
-     * @return
-     *            A set of all stop words.
-     * @throws IOException
-     */
-    public static HashSet<String> createStopSet()
-        throws IOException
-    {
-        HashSet<String> stopSet = new HashSet<String>();
-        BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_STOPLIST));
-        String line = "";
-
-        while((line = br.readLine()) != null)
-        {
-            stopSet.add(line);
-        }
-
-        br.close();
-        return stopSet;
     }
 
     /**
@@ -159,16 +144,21 @@ public class Tokenizer
                 continue;
             }
 
-            stemmer.setCurrent(term);
-            stemmer.stem();
-            // String term = stemmer.getCurrent();
-            if(!termMap.containsKey(stemmer.getCurrent()))
+            if(stemSwitch)
             {
-                termMap.put(stemmer.getCurrent(), ++termId);
+                stemmer.setCurrent(term);
+                stemmer.stem();
+                term = stemmer.getCurrent();
             }
-            tupleList.add(new Tuple(termMap.get(stemmer.getCurrent()), docId, matcher.start()));
+            if(!termMap.containsKey(term))
+            {
+                termMap.put(term, ++termId);
+            }
+            tupleList.add(new Tuple(termMap.get(term), docId, matcher.start()));
         }
 
+        /* Update the document length map and return */
+        docLenMap.put(docNo, tupleList.size());
         return tupleList;
     }
 
@@ -192,28 +182,30 @@ public class Tokenizer
     {
         /* Serialize the inverted document index */
         ObjectOutputStream out = new ObjectOutputStream(
-                new FileOutputStream(Properties.FILE_DOC_IDX));
+            new FileOutputStream(Properties.DIR_OBJ + "/" + Properties.FILE_DOC_IDX));
         out.writeObject(docMap);
         out.close();
 
         /* Serialize the inverted term index */
         out = new ObjectOutputStream(
-                new FileOutputStream(Properties.FILE_TERM_IDX));
+            new FileOutputStream(Properties.DIR_OBJ + "/" + Properties.FILE_TERM_IDX));
         out.writeObject(termMap);
         out.close();
 
-        /* Serialize the list of tuples */
-        /*
+        /* Serialize the document length map */
         out = new ObjectOutputStream(
-            new FileOutputStream(Properties.FILE_TUPLES_OBJ));
-        out.writeObject(tuples);
-        */
+            new FileOutputStream(Properties.DIR_OBJ + "/" + Properties.FILE_DOCLEN_OBJ));
+        out.writeObject(docLenMap);
+        out.close();
+
+        /* Write the tuples and various maps to the file system */
         writeTuplesToFS();
         writeMapsToFS(Properties.TYPE_DOC);
         writeMapsToFS(Properties.TYPE_TERM);
+        writeMapsToFS(Properties.TYPE_DOCLEN);
 
         /* Write document statistics to the file system */
-        fw = new FileWriter(Properties.FILE_STATS);
+        fw = new FileWriter(Properties.DIR_OBJ + "/" + Properties.FILE_STATS);
         fw.write(Properties.KEY_DOC_COUNT + " " + docCount + "\n");
         fw.write(Properties.KEY_VOCAB_SIZE + " " + (termId + 1) + "\n");
         fw.write(Properties.KEY_ALL_DOC_LEN + " " + allDocLength + "\n");
@@ -228,7 +220,7 @@ public class Tokenizer
     private void writeTuplesToFS()
         throws IOException
     {
-        fw = new FileWriter(Properties.FILE_TUPLES_TEXT, true);
+        fw = new FileWriter(Properties.DIR_OBJ + "/" + Properties.FILE_TUPLES_TEXT, true);
         for(Tuple tuple : tuples)
         {
             fw.write(tuple.getTermId() + " " +
@@ -248,23 +240,28 @@ public class Tokenizer
     {
         String file = "";
         StringBuilder sb = new StringBuilder();
-        HashMap<String, Long> typeMap = new HashMap<String, Long>();
+        HashMap typeMap = new HashMap();
 
         if(key == Properties.TYPE_DOC)
         {
-            file    = Properties.FILE_DOC_TXT;
+            file    = Properties.DIR_OBJ + "/" + Properties.FILE_DOC_TXT;
             typeMap = getDocMap();
         }
-        else
+        else if(key == Properties.TYPE_TERM)
         {
-            file    = Properties.FILE_TERM_TXT;
+            file    = Properties.DIR_OBJ + "/" + Properties.FILE_TERM_TXT;
             typeMap = getTermMap();
+        }
+        else if(key == Properties.TYPE_DOCLEN)
+        {
+            file    = Properties.DIR_OBJ + "/" + Properties.FILE_DOCLEN_TXT;
+            typeMap = getDocLenMap();
         }
 
         fw = new FileWriter(file, true);
-        for (String entry : typeMap.keySet())
+        for (Object entry : typeMap.keySet())
         {
-            sb.append(entry + " " + typeMap.get(entry) + "\n");
+            sb.append(entry.toString() + " " + typeMap.get(entry) + "\n");
         }
         fw.write(sb.toString());
         fw.close();
@@ -279,7 +276,7 @@ public class Tokenizer
         throws IOException, ClassNotFoundException
     {
         ObjectInputStream in = new ObjectInputStream(
-                new FileInputStream(Properties.FILE_DOC_IDX));
+            new FileInputStream(Properties.DIR_OBJ + "/" + Properties.FILE_DOC_IDX));
         HashMap<String, Long> docMap = (HashMap<String, Long>) in.readObject();
         in.close();
         return docMap;
@@ -294,10 +291,25 @@ public class Tokenizer
         throws IOException, ClassNotFoundException
     {
         ObjectInputStream in = new ObjectInputStream(
-            new FileInputStream(Properties.FILE_TERM_IDX));
+            new FileInputStream(Properties.DIR_OBJ + "/" + Properties.FILE_TERM_IDX));
         HashMap<String, Long> termMap = (HashMap<String, Long>) in.readObject();
         in.close();
         return termMap;
+    }
+
+    /**
+     * Get the document length map.
+     * @return
+     *            The document length map.
+     */
+    public static HashMap<String, Integer> getDocLenMap()
+        throws IOException, ClassNotFoundException
+    {
+        ObjectInputStream in = new ObjectInputStream(
+            new FileInputStream(Properties.DIR_OBJ + "/" + Properties.FILE_DOCLEN_OBJ));
+        HashMap<String, Integer> docLenMap = (HashMap<String, Integer>) in.readObject();
+        in.close();
+        return docLenMap;
     }
 
     /**
@@ -309,7 +321,8 @@ public class Tokenizer
         throws IOException
     {
         HashMap<String, String> statMap = new HashMap<String, String>();
-        BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_STATS));
+        BufferedReader br = new BufferedReader(new FileReader(
+            Properties.DIR_OBJ + "/" + Properties.FILE_STATS));
         String line = "";
 
         while((line = br.readLine()) != null)
@@ -335,10 +348,10 @@ public class Tokenizer
     {
         if(message != null)
         {
-            System.out.println(message);
+            Utils.cout(message + "\n");
         }
         long elapsedTime = (System.nanoTime() - startTime) / 1000000000;
-        System.out.println("Elapsed time: " + elapsedTime + " second(s)");
+        Utils.cout("Elapsed time: " + elapsedTime + " second(s)\n");
         return System.nanoTime();
     }
 
@@ -352,38 +365,50 @@ public class Tokenizer
         /* Calculate start time */
         long startTime = System.nanoTime();
 
-        System.out.println();
-        System.out.println("=========");
-        System.out.println("TOKENIZER");
-        System.out.println("=========");
+        Utils.cout("\n");
+        Utils.cout("=========\n");
+        Utils.cout("TOKENIZER\n");
+        Utils.cout("=========\n");
+
+        if(args.length < 2)
+        {
+            Utils.error("A minimum of 2 arguments are required.");
+            Utils.echo("-stop=true/false -stem=true/false");
+            System.exit(-1);
+        }
+
+        stopSwitch = args[0].equalsIgnoreCase("-stop=true");
+        stemSwitch = args[1].equalsIgnoreCase("-stem=true");
+        Utils.echo("Stop word removal has been set to " + stopSwitch);
+        Utils.echo("Stemming has been set to " + stemSwitch);
 
         try
         {
             Tokenizer t = new Tokenizer();
-            HashSet<String> stopSet = createStopSet();
-            System.out.println(">Creation of tuples");
+            HashSet<String> stopSet = stopSwitch ? Utils.createStopSet() : new HashSet<String>();
+            Utils.cout("\n>Creation of tuples\n");
             for (File file : new File("E:/Home/Repository/Java/IdeaProjects/A2_Indexing/input").listFiles())
             {
-                System.out.println("   [echo] Processing file " + file.getName());
+                Utils.echo("Processing file " + file.getName());
                 t.tokenizeFile(file.getAbsolutePath(), stopSet);
             }
-            System.out.println("\n>Sorting the tuples");
+            Utils.cout("\n>Sorting the tuples\n");
             t.sortTuples();
-            System.out.println(">Writing all the objects to the file system\n");
+            Utils.cout(">Writing all the objects to the file system\n\n");
             t.writeObjectsToFS();
 
             /* Output to console */
             HashMap<String, String> statMap = getStatistics();
-            System.out.println(">Corpus statistics");
-            System.out.println("Documents in corpus: " +
-                               statMap.get(Properties.KEY_DOC_COUNT));
-            System.out.println("Vocabulary size: " +
-                               statMap.get(Properties.KEY_VOCAB_SIZE));
-            System.out.println("Total length of all documents: " +
-                               statMap.get(Properties.KEY_ALL_DOC_LEN));
-            System.out.println("Average document length: " +
-                               statMap.get(Properties.KEY_AVG_DOC_LEN));
-            System.out.println();
+            Utils.cout(">Corpus statistics\n");
+            Utils.cout("Documents in corpus: " +
+                       statMap.get(Properties.KEY_DOC_COUNT) + "\n");
+            Utils.cout("Vocabulary size: " +
+                       statMap.get(Properties.KEY_VOCAB_SIZE) + "\n");
+            Utils.cout("Total length of all documents: " +
+                       statMap.get(Properties.KEY_ALL_DOC_LEN) + "\n");
+            Utils.cout("Average document length: " +
+                       statMap.get(Properties.KEY_AVG_DOC_LEN) + "\n");
+            Utils.cout("\n");
         }
         catch(IOException ioe)
         {

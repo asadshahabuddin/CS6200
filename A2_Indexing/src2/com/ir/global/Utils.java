@@ -1,5 +1,11 @@
 package com.ir.global;
 
+/* Import list */
+import java.util.HashSet;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.BufferedReader;
+
 /**
  * Author : Asad Shahabuddin
  * Created: Jun 10, 2015
@@ -68,6 +74,28 @@ public class Utils
             s = s.substring(1, s.length());
         }
         return s;
+    }
+
+    /**
+     * Create a set of all stop words.
+     * @return
+     *            A set of all stop words.
+     * @throws IOException
+     */
+    public static HashSet<String> createStopSet()
+            throws IOException
+    {
+        HashSet<String> stopSet = new HashSet<String>();
+        BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_STOPLIST));
+        String line = "";
+
+        while((line = br.readLine()) != null)
+        {
+            stopSet.add(line);
+        }
+
+        br.close();
+        return stopSet;
     }
 }
 /* End of Utils.java */

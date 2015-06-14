@@ -25,7 +25,9 @@ public class Indexer
     private static final int INDEX_COUNT = 85;
 
     /* Static data members */
-    private static HashSet stopSet;
+    private static boolean stopSwitch;
+    private static boolean stemSwitch;
+    private static HashSet<String> stopSet;
     private static HashMap<String, Long> docMap;
     private static HashMap<String, Long> termMap;
     private static Pattern pattern;
@@ -49,7 +51,7 @@ public class Indexer
     {
         try
         {
-            stopSet = Tokenizer.createStopSet();
+            stopSet = Utils.createStopSet();
             docMap  = Tokenizer.getDocMap();
             termMap = Tokenizer.getTermMap();
             pattern = Pattern.compile(Properties.REGEX_TOKEN);
@@ -145,9 +147,13 @@ public class Indexer
             }
 
             /* Stem individual terms */
-            stemmer.setCurrent(term);
-            stemmer.stem();
-            long termId = termMap.get(stemmer.getCurrent());
+            if(stemSwitch)
+            {
+                stemmer.setCurrent(term);
+                stemmer.stem();
+                term = stemmer.getCurrent();
+            }
+            long termId = termMap.get(term);
 
             /* Update the index */
             if(!index.containsKey(termId))
@@ -265,7 +271,7 @@ public class Indexer
             throws IOException
     {
         ObjectOutputStream out = new ObjectOutputStream(
-                new FileOutputStream(Properties.DIR_CATALOG + "/" + Properties.FILE_CATALOG_OBJ));
+            new FileOutputStream(Properties.DIR_CATALOG + "/" + Properties.FILE_CATALOG_OBJ));
         out.writeObject(catalogues);
         out.close();
     }
@@ -284,7 +290,7 @@ public class Indexer
     {
         Utils.cout("\n>Loading all the catalogues");
         ObjectInputStream in = new ObjectInputStream(
-                new FileInputStream(Properties.DIR_CATALOG + "/" + Properties.FILE_CATALOG_OBJ));
+            new FileInputStream(Properties.DIR_CATALOG + "/" + Properties.FILE_CATALOG_OBJ));
         HashSet<Long>[] catalogues = (HashSet<Long>[]) in.readObject();
         return catalogues;
     }
@@ -354,39 +360,6 @@ public class Indexer
             files[i - 1].close();
             new File(Properties.DIR_IDX + "/part" + i + ".idx").delete();
         }
-    }
-
-    /**
-     * Create a map of Document IDs and their corresponding 'Entry' objects
-     * from a line.
-     * @param s
-     *            The line to parse.
-     * @return
-     *            The resulting map of Document IDs and the corresponding
-     *            'Entry' object.
-     */
-    public HashMap<String, Entry> getIdxEntryMap(String s)
-    {
-        HashMap<String, Entry> idxEntryMap = new HashMap<String, Entry>();
-        String[] words = s.split("\\s");
-
-        for(int i = 1; i < words.length; i++)
-        {
-            Entry entry = new Entry();
-            int j;
-            for(j = i + 2;
-                j < words.length &&
-                        j < (i + 2 + Integer.valueOf(words[i + 1]));
-                j++)
-            {
-                entry.addTf();
-                entry.addOff(Long.valueOf(words[j]));
-            }
-            idxEntryMap.put(words[i], entry);
-            i = j - 1;
-        }
-
-        return idxEntryMap;
     }
 
     /**
@@ -491,6 +464,22 @@ public class Indexer
         Utils.cout("=======\n");
         Utils.cout("INDEXER\n");
         Utils.cout("=======\n");
+
+        if(args.length < 2)
+        {
+            Utils.error("A minimum of 2 arguments are required.");
+            Utils.echo("-stop=true/false -stem=true/false");
+            System.exit(-1);
+        }
+
+        stopSwitch = args[0].equalsIgnoreCase("-stop=true");
+        stemSwitch = args[1].equalsIgnoreCase("-stem=true");
+        Utils.echo("Stop word removal has been set to " + stopSwitch);
+        Utils.echo("Stemming has been set to " + stemSwitch + "\n");
+        if(!stopSwitch)
+        {
+            stopSet = new HashSet<String>();
+        }
 
         try
         {

@@ -10,7 +10,7 @@ import java.util.ArrayList;
 
 public class Entry
 {
-    private long tf;
+    private int tf;
     private ArrayList<Long> offs;
 
     /**
@@ -29,13 +29,13 @@ public class Entry
      * @param offs
      *            List of offsets for the term in the document.
      */
-    public Entry(long tf, ArrayList<Long> offs)
+    public Entry(int tf, ArrayList<Long> offs)
     {
         this.tf = tf;
         this.offs = offs;
     }
 
-    public void setTf(long tf)
+    public void setTf(int tf)
     {
         this.tf = tf;
     }
@@ -45,7 +45,7 @@ public class Entry
         this.tf += 1;
     }
 
-    public long getTf()
+    public int getTf()
     {
         return tf;
     }
