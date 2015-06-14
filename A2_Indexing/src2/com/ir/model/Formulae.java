@@ -52,5 +52,20 @@ public class Formulae
         }
         return Math.log(Properties.LL * bgModel);
     }
+
+    /**
+     * Calculates the proximity search score.
+     * @param minSpan
+     *           The minimum proximity between all the terms present in
+     *           a document.
+     * @param termCount
+     *           The number of terms present in a document.
+     * @return
+     *           The proximity score.
+     */
+    public static double proximitySearch(long minSpan, int termCount)
+    {
+        return Math.pow(Properties.LAMBDA, (minSpan - termCount) / (double) termCount);
+    }
 }
 /* End of Formulae.java */
