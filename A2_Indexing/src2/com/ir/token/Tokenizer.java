@@ -63,10 +63,11 @@ public class Tokenizer
     {
         for(Map.Entry<String, String> entry : createDocInfoMap(fileName).entrySet())
         {
-            tuples.addAll(tokenizeDocument(entry.getKey(), entry.getValue(), stopSet));
+            // tuples.addAll(tokenizeDocument(entry.getKey(), entry.getValue(), stopSet));
+            tokenizeDocument(entry.getKey(), entry.getValue(), stopSet);
             docCount++;
         }
-        allDocLength = tuples.size();
+        // allDocLength = tuples.size();
     }
 
     /**
@@ -106,6 +107,11 @@ public class Tokenizer
                     }
                 }
 
+                /* For debugging purpose */
+                if(docNo.equals("AP890207-0217"))
+                {
+                    Utils.cout(text.toString().trim() + "\n");
+                }
                 docInfoMap.put(docNo, text.toString().trim());
                 text  = new StringBuilder();
             }
@@ -130,6 +136,7 @@ public class Tokenizer
                                              HashSet<String> stopSet)
     {
         ArrayList<Tuple> tupleList = new ArrayList<Tuple>();
+        int docLength = 0;
         matcher = pattern.matcher(text);
         /* Update the inverse document index */
         docMap.put(docNo, ++docId);
@@ -138,8 +145,7 @@ public class Tokenizer
         {
             String term = Utils.filterText(matcher.group(0).toLowerCase());
             if(stopSet.contains(term) ||
-               term.length() == 0 ||
-               (term.length() == 1 && term.charAt(0) > 57))
+               term.length() == 0)
             {
                 continue;
             }
@@ -154,11 +160,13 @@ public class Tokenizer
             {
                 termMap.put(term, ++termId);
             }
-            tupleList.add(new Tuple(termMap.get(term), docId, matcher.start()));
+            // tupleList.add(new Tuple(termMap.get(term), docId, matcher.start()));
+            docLength++;
         }
 
         /* Update the document length map and return */
-        docLenMap.put(docNo, tupleList.size());
+        docLenMap.put(docNo, docLength);
+        allDocLength += docLength;
         return tupleList;
     }
 
@@ -199,7 +207,7 @@ public class Tokenizer
         out.close();
 
         /* Write the tuples and various maps to the file system */
-        writeTuplesToFS();
+        // writeTuplesToFS();
         writeMapsToFS(Properties.TYPE_DOC);
         writeMapsToFS(Properties.TYPE_TERM);
         writeMapsToFS(Properties.TYPE_DOCLEN);
@@ -392,9 +400,9 @@ public class Tokenizer
                 Utils.echo("Processing file " + file.getName());
                 t.tokenizeFile(file.getAbsolutePath(), stopSet);
             }
-            Utils.cout("\n>Sorting the tuples\n");
-            t.sortTuples();
-            Utils.cout(">Writing all the objects to the file system\n\n");
+            // Utils.cout("\n>Sorting the tuples\n");
+            // t.sortTuples();
+            Utils.cout("\n>Writing all the objects to the file system\n\n");
             t.writeObjectsToFS();
 
             /* Output to console */

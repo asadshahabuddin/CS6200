@@ -140,8 +140,7 @@ public class Indexer
             /* Do not process stop words, et cetera. */
             String term = Utils.filterText(matcher.group(0).toLowerCase());
             if(stopSet.contains(term) ||
-               term.length() == 0 ||
-               (term.length() == 1 && term.charAt(0) > 57))
+               term.length() == 0)
             {
                 continue;
             }
@@ -212,7 +211,7 @@ public class Indexer
      * @throws IOException
      */
     public BufferedReader[] getIdxFiles(int n)
-            throws IOException
+        throws IOException
     {
         BufferedReader[] files = new BufferedReader[n];
         for(int i = 1; i <= n; i++)
@@ -231,7 +230,7 @@ public class Indexer
             throws IOException
     {
         ObjectOutputStream out = new ObjectOutputStream(
-                new FileOutputStream(Properties.DIR_CATALOG + "/part" + idx + ".catalog"));
+            new FileOutputStream(Properties.DIR_CATALOG + "/part" + idx + ".catalog"));
         out.writeObject(catalog);
         out.close();
 
@@ -254,7 +253,7 @@ public class Indexer
      * @throws ClassNotFoundException
      */
     public static HashMap<Long, Long> getCatalog(int idx)
-            throws IOException, ClassNotFoundException
+        throws IOException, ClassNotFoundException
     {
         ObjectInputStream in = new ObjectInputStream(
                 new FileInputStream(Properties.DIR_CATALOG + "/part" + idx + ".catalog"));
@@ -268,7 +267,7 @@ public class Indexer
      * @throws IOException
      */
     public void serializeCatalogues()
-            throws IOException
+        throws IOException
     {
         ObjectOutputStream out = new ObjectOutputStream(
             new FileOutputStream(Properties.DIR_CATALOG + "/" + Properties.FILE_CATALOG_OBJ));
@@ -286,7 +285,7 @@ public class Indexer
      * @throws ClassNotFoundException
      */
     public HashSet<Long>[] getCatalogues(int n)
-            throws IOException, ClassNotFoundException
+        throws IOException, ClassNotFoundException
     {
         Utils.cout("\n>Loading all the catalogues");
         ObjectInputStream in = new ObjectInputStream(

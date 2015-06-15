@@ -70,14 +70,6 @@ public class Properties
 
     static
     {
-        PUNCTUATIONS.add('.');
-        PUNCTUATIONS.add(',');
-        PUNCTUATIONS.add(';');
-        PUNCTUATIONS.add(':');
-        PUNCTUATIONS.add('"');
-        PUNCTUATIONS.add('(');
-        PUNCTUATIONS.add(')');
-        PUNCTUATIONS.add('!');
         PUNCTUATIONS.add('_');
     }
 }

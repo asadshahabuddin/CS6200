@@ -14,6 +14,8 @@ import java.io.IOException;
 import com.ir.model.Formulae;
 import java.io.BufferedReader;
 import com.ir.token.Tokenizer;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import com.ir.model.DocScorePair;
 import org.tartarus.snowball.ext.PorterStemmer;
 
@@ -26,6 +28,7 @@ public class ProximitySearchClient
 {
     /* Static data members */
     private static PorterStemmer stemmer;
+    private static Pattern pattern;
     private static HashSet<String> stopSet;
     private static HashMap<String, Integer> docLenMap;
     private static HashMap<String, Entry> termFreqMap;
@@ -37,6 +40,7 @@ public class ProximitySearchClient
         try
         {
             stemmer       = new PorterStemmer();
+            pattern       = Pattern.compile(Properties.REGEX_TOKEN);
             stopSet       = Utils.createStopSet();
             docLenMap     = Tokenizer.getDocLenMap();
             termFreqMap   = new HashMap<String, Entry>();
@@ -78,21 +82,19 @@ public class ProximitySearchClient
             while(line.charAt(++idx) == ' ');
             line = line.substring(idx);
 
-            for(String term : line.split("\\s+|-"))
+            Matcher matcher = pattern.matcher(line);
+            while(matcher.find())
             {
-                if(!term.equalsIgnoreCase("u.s."))
-                {
-                    term = Utils.filterText(term).trim().toLowerCase();
-                }
+                String term = Utils.filterText(matcher.group(0).toLowerCase());
                 if(++wordIdx < 4 ||
                    stopSet.contains(term))
                 {
                     continue;
                 }
 
-                stemmer.setCurrent(term);
-                stemmer.stem();
-                execQuery(stemmer.getCurrent());
+                // stemmer.setCurrent(term);
+                // stemmer.stem();
+                execQuery(term);
             }
             sortAndFilterResults();
             writeQueuesToFS(queryNum);
@@ -106,8 +108,6 @@ public class ProximitySearchClient
         throws IOException
     {
         termFreqMap = SearchClient.queryTerm(term);
-        String key = "";
-
         for(Map.Entry<String, Entry> entry : termFreqMap.entrySet())
         {
             if(!proxSearchMap.containsKey(entry.getKey()))
@@ -179,7 +179,7 @@ public class ProximitySearchClient
         proxsearchq = new Queue();
         for(Map.Entry<String, ArrayList<ArrayList<Long>>> entry : proxSearchMap.entrySet())
         {
-            if(entry.getValue().size() < 2)
+            if(entry.getValue().size() == 0)
             {
                 proxsearchq.add(new DocScorePair(entry.getKey(), 0D));
             }
@@ -224,7 +224,7 @@ public class ProximitySearchClient
     {
         try
         {
-            new ProximitySearchClient().search();
+            search();
         }
         catch(IOException ioe)
         {

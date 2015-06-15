@@ -63,13 +63,17 @@ public class Utils
      */
     public static String filterText(String s)
     {
+        if(s.equalsIgnoreCase("u.s"))
+        {
+            return "U.S.";
+        }
         while(s.length() > 0 &&
-                Properties.PUNCTUATIONS.contains(s.charAt(s.length() - 1)))
+              Properties.PUNCTUATIONS.contains(s.charAt(s.length() - 1)))
         {
             s = s.substring(0, s.length() - 1);
         }
         while(s.length() > 0 &&
-                Properties.PUNCTUATIONS.contains(s.charAt(0)))
+              Properties.PUNCTUATIONS.contains(s.charAt(0)))
         {
             s = s.substring(1, s.length());
         }

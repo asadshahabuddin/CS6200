@@ -10,6 +10,8 @@ import com.ir.index.Entry;
 import java.io.IOException;
 import com.ir.global.Utils;
 import java.io.BufferedReader;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import com.ir.global.Properties;
 import com.ir.global.SearchClient;
 import org.tartarus.snowball.ext.PorterStemmer;
@@ -27,6 +29,7 @@ public class Query
     private static double avgDocLength;
     private static double allDocLength;
     private static PorterStemmer stemmer;
+    private static Pattern pattern;
 
     /* File writers */
     private static FileWriter fw1;
@@ -55,6 +58,7 @@ public class Query
     static
     {
         stemmer = new PorterStemmer();
+        pattern = Pattern.compile(Properties.REGEX_TOKEN);
     }
 
     /*
@@ -170,7 +174,7 @@ public class Query
               (dfp2 = tfidfq.remove())     != null &&
               (dfp3 = okapibm25q.remove()) != null &&
               (dfp4 = lmlaplaceq.remove()) != null &&
-              (dfp5 = lmjmq.remove()) != null)
+              (dfp5 = lmjmq.remove())      != null)
         {
             buffer1.append(queryNum + " Q0 " + dfp1.getDocNo() + " " +
                     ++rank   + " "    + dfp1.getScore() + " Exp\n");
@@ -209,13 +213,10 @@ public class Query
     /* Create a map to store frequencies of various terms in a query */
     public static void populateTfwqMap(String q)
     {
-        String[] terms = q.split("\\s+|-");
-        for(String term : terms)
+        Matcher matcher = pattern.matcher(q);
+        while(matcher.find())
         {
-            if(!term.equalsIgnoreCase("u.s."))
-            {
-                term = Utils.filterText(term).toLowerCase();
-            }
+            String term = Utils.filterText(matcher.group(0).toLowerCase());
             if(stemSwitch)
             {
                 stemmer.setCurrent(term);
@@ -224,7 +225,7 @@ public class Query
             }
             if(!tfwqMap.containsKey(term))
             {
-                tfwqMap.put(term, 1);
+                tfwqMap.put(term, 0);
             }
             tfwqMap.put(term, tfwqMap.get(term) + 1);
         }
@@ -245,7 +246,6 @@ public class Query
             int idx = -1;
             int wordIdx = 0;
             String queryNum = "";
-            HashSet<String> termSet = new HashSet<String>();
 
             /* Derive query number */
             while(line.charAt(++idx) != ' ')
@@ -259,12 +259,10 @@ public class Query
             line = line.substring(idx);
             populateTfwqMap(line);
 
-            for(String term : line.split("\\s+|-"))
+            Matcher matcher = pattern.matcher(line);
+            while(matcher.find())
             {
-                if(!term.equalsIgnoreCase("u.s."))
-                {
-                    term = Utils.filterText(term).trim().toLowerCase();
-                }
+                String term = Utils.filterText(matcher.group(0).toLowerCase());
                 if(++wordIdx < 4 ||
                    stopSet.contains(term))
                 {
@@ -277,7 +275,6 @@ public class Query
                     term = stemmer.getCurrent();
                 }
                 execQuery(term);
-                termSet.add(term);
             }
             sortAndFilterMaps();
             writeQueuesToFS(queryNum);

@@ -25,8 +25,7 @@ public class Queue
     }
 
     /* Comparator class 2 */
-    static class PriorityQueueReverse
-            implements Comparator<DocScorePair>
+    static class PriorityQueueReverse implements Comparator<DocScorePair>
     {
         @Override
         public int compare(DocScorePair dfp1, DocScorePair dfp2)
