@@ -30,7 +30,7 @@ public class Properties
     public static final double V       = 178050;
     public static final double L       = 0.22;
     public static final double LL      = 1 - L;
-    public static final double C       = 1500;
+    public static final double C       = 50000;
 
     /* Keys */
     public static final int TYPE_DOC    = 0;

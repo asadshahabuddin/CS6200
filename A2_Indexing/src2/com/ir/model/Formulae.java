@@ -65,7 +65,7 @@ public class Formulae
      */
     public static double proximitySearch(long minSpan, int termCount, int docLen)
     {
-        return ((Properties.C - minSpan) * termCount) / (double) (docLen + 158039);
+        return ((Properties.C - minSpan) * termCount) / (double) (docLen + 198328);
     }
 }
 /* End of Formulae.java */
