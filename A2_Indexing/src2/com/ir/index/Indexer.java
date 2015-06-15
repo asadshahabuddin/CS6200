@@ -163,7 +163,6 @@ public class Indexer
             {
                 index.get(termId).put(docId, new Entry());
             }
-            index.get(termId).get(docId).addTf();
             index.get(termId).get(docId).addOff(matcher.start());
         }
     }
@@ -186,12 +185,13 @@ public class Indexer
             sb.append(entryMap.getKey() + " ");
             for(Map.Entry<Long, Entry> entry : entryMap.getValue().entrySet())
             {
-                sb.append(entry.getKey() + " " +
-                          entry.getValue().getTf() + " ");
+                sb.append(entry.getKey() + " ");
                 for(Long off : entry.getValue().getOffs())
                 {
-                    sb.append(off + " ");
+                    sb.append(off + ";");
                 }
+                sb.setLength(sb.length() - 1);
+                sb.append(" ");
             }
             sb.setLength(sb.length() - 1);
             sb.append("\n");
@@ -459,6 +459,7 @@ public class Indexer
     {
         /* Calculate start time */
         long startTime = System.nanoTime();
+
         Utils.cout("\n");
         Utils.cout("=======\n");
         Utils.cout("INDEXER\n");

@@ -331,6 +331,14 @@ public class Query
     /* Main method for unit testing */
     public static void main(String[] args)
     {
+        /* Calculate start time */
+        long startTime = System.nanoTime();
+
+        Utils.cout("\n");
+        Utils.cout("================\n");
+        Utils.cout("RETRIEVAL MODELS\n");
+        Utils.cout("================\n");
+
         if(args.length < 2)
         {
             Utils.error("A minimum of 2 arguments are required.");
@@ -357,6 +365,10 @@ public class Query
         catch(ClassNotFoundException cnfe)
         {
             cnfe.printStackTrace();
+        }
+        finally
+        {
+            Utils.elapsedTime(startTime, "\nScoring for all queries completed.");
         }
     }
 }

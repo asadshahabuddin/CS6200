@@ -27,6 +27,8 @@ import org.tartarus.snowball.ext.PorterStemmer;
 public class ProximitySearchClient
 {
     /* Static data members */
+    private static boolean stopSwitch;
+    private static boolean stemSwitch;
     private static PorterStemmer stemmer;
     private static Pattern pattern;
     private static HashSet<String> stopSet;
@@ -91,9 +93,12 @@ public class ProximitySearchClient
                 {
                     continue;
                 }
-
-                // stemmer.setCurrent(term);
-                // stemmer.stem();
+                if(stemSwitch)
+                {
+                    stemmer.setCurrent(term);
+                    stemmer.stem();
+                    term = stemmer.getCurrent();
+                }
                 execQuery(term);
             }
             sortAndFilterResults();
@@ -222,13 +227,38 @@ public class ProximitySearchClient
      */
     public static void main(String[] args)
     {
+        /* Calculate start time */
+        long startTime = System.nanoTime();
+
+        Utils.cout("\n");
+        Utils.cout("================\n");
+        Utils.cout("PROXIMITY SEARCH\n");
+        Utils.cout("================\n");
+
+        if(args.length < 2)
+        {
+            Utils.error("A minimum of 2 arguments are required.");
+            Utils.echo("-stop=true/false -stem=true/false");
+            System.exit(-1);
+        }
+
+        stopSwitch = args[0].equalsIgnoreCase("-stop=true");
+        stemSwitch = args[1].equalsIgnoreCase("-stem=true");
+        Utils.echo("Stop word removal has been set to " + stopSwitch);
+        Utils.echo("Stemming has been set to " + stemSwitch + "\n");
+
         try
         {
+            HashSet<String> stopSet = stopSwitch ? Utils.createStopSet() : new HashSet<String>();
             search();
         }
         catch(IOException ioe)
         {
             ioe.printStackTrace();
+        }
+        finally
+        {
+            Utils.elapsedTime(startTime, "\nScoring for all queries completed.");
         }
     }
 }

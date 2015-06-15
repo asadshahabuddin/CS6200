@@ -72,19 +72,15 @@ public class SearchClient
         String[] termEntry = file.readLine().split(" ");
 
         /* Populate the index entry map */
-        for(int i = 1; i < termEntry.length; i++)
+        for(int i = 1; i < termEntry.length; i += 2)
         {
             Entry entry = new Entry();
-            int j;
-            for(j = i + 2;
-                j < termEntry.length && j < (i + 2 + Integer.valueOf(termEntry[i + 1]));
-                j++)
+            for(String off : termEntry[i + 1].split(";"))
             {
                 entry.addTf();
-                entry.addOff(Long.valueOf(termEntry[j]));
+                entry.addOff(Long.valueOf(off));
             }
             termEntryMap.put(docMap.get(termEntry[i]), entry);
-            i = j - 1;
         }
 
         return termEntryMap;
@@ -114,24 +110,19 @@ public class SearchClient
         String[] termEntry = file.readLine().split(" ");
 
         /* Populate the index entry map */
-        for(int i = 1; i < termEntry.length; i++)
+        for(int i = 1; i < termEntry.length; i += 2)
         {
-            int j;
-            if(termEntry[i].equals(
-                    String.valueOf(invDocMap.get(docNum))))
+            if(termEntry[i].equals(String.valueOf(invDocMap.get(docNum))))
             {
                 Entry entry = new Entry();
-                for(j = i + 2;
-                    j < termEntry.length && j < (i + 2 + Integer.valueOf(termEntry[i + 1]));
-                    j++)
+                for(String off : termEntry[i + 1].split(";"))
                 {
                     entry.addTf();
-                    entry.addOff(Long.valueOf(termEntry[j]));
+                    entry.addOff(Long.valueOf(off));
                 }
-                termEntryMap.put(docNum, entry);
+                termEntryMap.put(docMap.get(termEntry[i]), entry);
                 break;
             }
-            i += Integer.valueOf(termEntry[i + 1]) + 1;
         }
 
         return termEntryMap;
@@ -147,7 +138,7 @@ public class SearchClient
         try
         {
             int ttf = 0;
-            HashMap<String, Entry> idxEntryMap = queryTerm("allegations");
+            HashMap<String, Entry> idxEntryMap = queryTerm("thioridazin", "AP891007-0094");
             for(Map.Entry<String, Entry> entry : idxEntryMap.entrySet())
             {
                 ttf += entry.getValue().getTf();
