@@ -107,11 +107,6 @@ public class Tokenizer
                     }
                 }
 
-                /* For debugging purpose */
-                if(docNo.equals("AP890207-0217"))
-                {
-                    Utils.cout(text.toString().trim() + "\n");
-                }
                 docInfoMap.put(docNo, text.toString().trim());
                 text  = new StringBuilder();
             }
