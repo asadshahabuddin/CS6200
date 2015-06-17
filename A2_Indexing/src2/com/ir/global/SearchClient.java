@@ -7,6 +7,8 @@ import com.ir.index.Entry;
 import java.io.IOException;
 import com.ir.index.Indexer;
 import com.ir.token.Tokenizer;
+import org.tartarus.snowball.ext.PorterStemmer;
+
 import java.io.RandomAccessFile;
 
 /**
@@ -138,18 +140,23 @@ public class SearchClient
         try
         {
             int ttf = 0;
-            HashMap<String, Entry> idxEntryMap = queryTerm("thioridazin", "AP891007-0094");
+            PorterStemmer stemmer = new PorterStemmer();
+            stemmer.setCurrent("allegations");
+            stemmer.stem();
+            HashMap<String, Entry> idxEntryMap = queryTerm(stemmer.getCurrent());
             for(Map.Entry<String, Entry> entry : idxEntryMap.entrySet())
             {
                 ttf += entry.getValue().getTf();
+                /*
                 Utils.cout(entry.getKey() + " (TF=" + entry.getValue().getTf() + ") - ");
                 for(Long off : entry.getValue().getOffs())
                 {
                     Utils.cout(off + " ");
                 }
                 Utils.cout("\n");
+                */
             }
-            Utils.cout("Total term frequency is " + ttf + "\n");
+            Utils.cout("Total term frequency is " + idxEntryMap.size() + "\n");
         }
         catch(IOException ioe)
         {
