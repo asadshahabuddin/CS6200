@@ -64,6 +64,11 @@ public class Frontier
         this.inLinkCount = inLinkCount;
     }
 
+    public void incrInLinkCount()
+    {
+        this.inLinkCount++;
+    }
+
     public int getInLinkCount()
     {
         return inLinkCount;
