@@ -2,6 +2,7 @@ package com.ir.crawl;
 
 /* Import list */
 import java.util.LinkedHashMap;
+import com.ir.global.Properties;
 
 /**
  * Author : Asad Shahabuddin
@@ -55,7 +56,7 @@ public class Map
             return add(url, 1);
         }
         /* Don't add to the map if the key has previously been removed. */
-        if(map.get(url) == -1)
+        if(map.get(url) == Properties.FLAG_REMOVED)
         {
             return false;
         }
@@ -87,7 +88,7 @@ public class Map
                 maxValue = map.get(key);
             }
         }
-        map.put(maxKey, -1);
+        map.put(maxKey, Properties.FLAG_REMOVED);
         return new Frontier(maxKey, maxValue);
     }
 
