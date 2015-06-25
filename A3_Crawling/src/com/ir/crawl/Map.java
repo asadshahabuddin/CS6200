@@ -33,10 +33,20 @@ public class Map
      */
     public boolean add(String url, Integer inLinkCount)
     {
+        /* Sanity check */
         if(url == null || url.length() == 0)
         {
             return false;
         }
+        /* Do not add entries belonging to the list of restricted domains. */
+        for(String restrictedDomain : Properties.restrictedDomains)
+        {
+            if(url.contains(restrictedDomain))
+            {
+                return false;
+            }
+        }
+
         map.put(url, inLinkCount);
         size++;
         return true;

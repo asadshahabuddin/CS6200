@@ -18,9 +18,7 @@ import org.apache.http.HttpResponse;
 import org.apache.commons.io.IOUtils;
 import org.jsoup.Connection.Response;
 import org.apache.http.util.EntityUtils;
-import org.apache.http.client.HttpClient;
 import crawlercommons.robots.BaseRobotRules;
-import org.apache.http.protocol.HttpContext;
 import org.apache.http.client.methods.HttpGet;
 import crawlercommons.robots.SimpleRobotRules;
 import org.apache.http.protocol.BasicHttpContext;
@@ -42,8 +40,6 @@ public class Crawler
     private static FileWriter fw;
     private static Pattern urlPattern;
     private static Pattern domainPattern;
-    private static HttpClient client;
-    private static HttpContext context;
     private static SimpleRobotRulesParser parser;
 
     /* Non-static data members */
@@ -60,8 +56,6 @@ public class Crawler
             fw            = new FileWriter(Properties.DIR_CRAWL + "/as" + docCount, true);
             urlPattern    = Pattern.compile(Properties.REGEX_URL);
             domainPattern = Pattern.compile(Properties.REGEX_DOMAIN);
-            client        = new DefaultHttpClient();
-            context       = new BasicHttpContext();
             parser        = new SimpleRobotRulesParser();
         }
         catch(IOException ioe)
@@ -237,15 +231,17 @@ public class Crawler
         {
             URL url = new URL(urlStr);
             String domain = url.getProtocol() + "://" +
-                    url.getHost() +
-                    (url.getPort() > -1 ? ":" + url.getPort() : "");
+                            url.getHost() +
+                            (url.getPort() > -1 ? ":" + url.getPort() : "");
             rules = disallowedLinks.get(domain);
 
             if(rules == null)
             {
-                HttpResponse res = client.execute(new HttpGet(domain + "/robots.txt"), context);
+                HttpResponse res = new DefaultHttpClient()
+                                   .execute(new HttpGet(domain + "/robots.txt"),
+                                           new BasicHttpContext());
                 if(res.getStatusLine().getStatusCode() == 404 &&
-                        res.getStatusLine() != null)
+                   res.getStatusLine() != null)
                 {
                     rules = new SimpleRobotRules(RobotRulesMode.ALLOW_ALL);
                     EntityUtils.consume(res.getEntity());
@@ -255,16 +251,22 @@ public class Crawler
                     rules = parser.parseContent(domain,
                             IOUtils.toByteArray(new BufferedHttpEntity(res.getEntity()).getContent()),
                             "text/plain",
-                            "ASBot");
+                            "Mozilla 5.0");
                 }
                 disallowedLinks.put(domain, rules);
             }
         }
         catch(IOException ioe)
         {
+            Utils.error("Ignoring " + urlStr);
             ioe.printStackTrace();
         }
 
+        /* Fail safe */
+        if(rules == null)
+        {
+            return true;
+        }
         return rules.isAllowed(urlStr);
     }
 
@@ -280,13 +282,29 @@ public class Crawler
     {
         try
         {
-            /* Write the relevant content to the file system. */
             Utils.echo("Crawled item " + docCount);
-            fw.write("<DOC>\n"  +
-                     "<DOCNO>"  + docNo                    + "</DOCNO>\n" +
-                     "<HEAD>"   + doc.title().trim()       + "</HEAD>\n" +
+            /* Create a space-separated list of all the outlinks. */
+            StringBuilder sb = new StringBuilder();
+            for(String s : outLinks.get(docNo))
+            {
+                sb.append(s + " ");
+            }
+
+            /* Write the in-link graph to the file system. */
+            sb = new StringBuilder();
+            for(String s : inLinks.get(docNo))
+            {
+                sb.append(s + " ");
+            }
+
+            /* Write the relevant content to the file system. */
+            fw.write("<DOC>\n"    +
+                     "<DOCNO>"    + docNo                  + "</DOCNO>\n" +
+                     "<HEAD>"     + doc.title().trim()     + "</HEAD>\n" +
+                     "<OUTLINKS>" + sb.toString().trim()   + "</OUTLINKS>\n" +
                      "<TEXT>\n" + doc.body().text().trim() + "\n</TEXT>\n" +
                      "</DOC>\n");
+
 
             /* Create a new file for every 100 web pages. */
             if(++docCount % 100 == 1)
@@ -322,6 +340,7 @@ public class Crawler
         HashSet<String> disallowedSet;
         url = canonicalUrl(url, "");
         map.add(url, 0);
+        map.add(url, 0);
         inLinks.put(url, new HashSet<String>());
         outLinks.put(url, new HashSet<String>());
 
@@ -330,9 +349,10 @@ public class Crawler
         {
             try
             {
+                // Map newMap = new Map();
                 url  = map.remove().getUrl();
                 Thread.sleep(1000);
-                res = Jsoup.connect(url).execute();
+                res = Jsoup.connect(url).userAgent("Mozilla 5.0").timeout(6000).execute();
                 /* Process HTML pages only. */
                 if(res == null || !res.contentType().contains("text/html"))
                 {
@@ -362,6 +382,12 @@ public class Crawler
                         map.update(newUrl);
                     }
                 }
+                /*
+                if(map.size() == 0)
+                {
+                    map = newMap;
+                }
+                */
             }
             catch(InterruptedException intre) { /* TODO */ }
             catch(IOException ioe)
