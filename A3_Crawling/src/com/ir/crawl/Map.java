@@ -11,6 +11,7 @@ import com.ir.global.Properties;
 
 public class Map
 {
+    private static int size = 0;
     private LinkedHashMap<String, Integer> map;
 
     /**
@@ -37,6 +38,7 @@ public class Map
             return false;
         }
         map.put(url, inLinkCount);
+        size++;
         return true;
     }
 
@@ -72,7 +74,7 @@ public class Map
      */
     public Frontier remove()
     {
-        if(map.size() == 0)
+        if(size == 0)
         {
             return null;
         }
@@ -89,6 +91,7 @@ public class Map
             }
         }
         map.put(maxKey, Properties.FLAG_REMOVED);
+        size--;
         return new Frontier(maxKey, maxValue);
     }
 
@@ -99,7 +102,7 @@ public class Map
      */
     public int size()
     {
-        return map.size();
+        return size;
     }
 
     /**

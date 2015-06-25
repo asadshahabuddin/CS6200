@@ -8,15 +8,26 @@ import java.util.HashMap;
 import java.io.FileWriter;
 import java.io.IOException;
 import com.ir.global.Utils;
-import org.jsoup.Connection;
 import java.io.BufferedReader;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Document;
 import com.ir.global.Properties;
-import java.io.InputStreamReader;
-import java.net.MalformedURLException;
+import org.apache.http.HttpResponse;
+import org.apache.commons.io.IOUtils;
+import org.jsoup.Connection.Response;
+import org.apache.http.util.EntityUtils;
+import org.apache.http.client.HttpClient;
+import crawlercommons.robots.BaseRobotRules;
+import org.apache.http.protocol.HttpContext;
+import org.apache.http.client.methods.HttpGet;
+import crawlercommons.robots.SimpleRobotRules;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.entity.BufferedHttpEntity;
+import crawlercommons.robots.SimpleRobotRulesParser;
+import org.apache.http.impl.client.DefaultHttpClient;
+import crawlercommons.robots.SimpleRobotRules.RobotRulesMode;
 
 /**
  * Author : Asad Shahabuddin
@@ -26,20 +37,37 @@ import java.net.MalformedURLException;
 public class Crawler
 {
     /* Static data members */
+    private static int docCount;
     private static BufferedReader br;
     private static FileWriter fw;
+    private static Pattern urlPattern;
     private static Pattern domainPattern;
-    private static Pattern canonicalPattern;
+    private static HttpClient client;
+    private static HttpContext context;
+    private static SimpleRobotRulesParser parser;
 
     /* Non-static data members */
     private Matcher matcher;
     private HashMap<String, HashSet<String>> inLinks;
     private HashMap<String, HashSet<String>> outLinks;
+    private HashMap<String, BaseRobotRules> disallowedLinks;
 
     static
     {
-        domainPattern    = Pattern.compile(Properties.REGEX_DOMAIN);
-        canonicalPattern = Pattern.compile(Properties.REGEX_CANONICAL);
+        try
+        {
+            docCount      = 1;
+            fw            = new FileWriter(Properties.DIR_CRAWL + "/as" + docCount, true);
+            urlPattern    = Pattern.compile(Properties.REGEX_URL);
+            domainPattern = Pattern.compile(Properties.REGEX_DOMAIN);
+            client        = new DefaultHttpClient();
+            context       = new BasicHttpContext();
+            parser        = new SimpleRobotRulesParser();
+        }
+        catch(IOException ioe)
+        {
+            ioe.printStackTrace();
+        }
     }
 
     /**
@@ -47,61 +75,133 @@ public class Crawler
      */
     public Crawler()
     {
-        inLinks  = new HashMap<>();
-        outLinks = new HashMap<>();
+        inLinks         = new HashMap<>();
+        outLinks        = new HashMap<>();
+        disallowedLinks = new HashMap<>();
     }
 
     /**
-     * Create a canonical URL.
+     * Create the equivalent canonical domain.
      * @param url
+     *            The URL object.
+     * @return
+     *            The equivalent canonical domain.
+     */
+    public String canonicalDomain(URL url)
+    {
+        int port = url.getPort();
+        if((url.getProtocol().equals("http")  && port == 80) ||
+           (url.getProtocol().equals("https") && port == 443))
+        {
+            port = -1;
+        }
+        return (url.getProtocol() + "://" +
+                url.getHost()     +
+                (port == -1 ? "" : ":" + port)).toLowerCase();
+    }
+
+    /**
+     * Create the equivalent canonical URL.
+     * @param urlStr
      *            The string containing a URL.
      * @return
-     *            The canonical URL.
+     *            The equivalent canonical URL.
      */
-    public String canonicalUrl(String url, String parentDomain)
+    public String canonicalUrl(String urlStr, String parentDomain)
     {
+        /* Sanity check */
+        if(urlStr.contains("href=\"\""))
+        {
+            return null;
+        }
+
         /* Extract the URL from the string. */
-        matcher = canonicalPattern.matcher(url);
+        matcher = urlPattern.matcher(urlStr);
         if(matcher.find())
         {
-            url = matcher.group(1);
+            urlStr = matcher.group(1);
+        }
+        if(urlStr.startsWith("//"))
+        {
+            urlStr = "http:" + urlStr;
         }
 
-        /* Convert the scheme and host to lower case. */
-        matcher = domainPattern.matcher(url);
-        String domain = null;
-        if(matcher.find())
+        /*
+        (1) Remove port 80 from HTTP URLs and port 443 from HTTPS URLs.
+        (2) Convert the scheme and host to lower case.
+        */
+        URL url;
+        String curDomain = null;
+        String path = null;
+        if(urlStr.contains("http://") || urlStr.contains("https://"))
         {
-            domain = matcher.group(0).toLowerCase();
-            url    = url.replace(matcher.group(0), "");
+            try
+            {
+                url = new URL(urlStr);
+                curDomain = canonicalDomain(url);
+                path = url.getPath();
+                /* Return if the path corresponds to root. */
+                if(path.equals("/") || path.equals(""))
+                {
+                    return curDomain;
+                }
+            }
+            catch(IOException ioe)
+            {
+                ioe.printStackTrace();
+            }
+        }
+        /* (3) Resolve relative URLs of the form '../x.html'. */
+        else
+        {
+            path = urlStr;
+            if(path.charAt(0) == '/')
+            {
+                try
+                {
+                    parentDomain = canonicalDomain(new URL(parentDomain));
+                }
+                catch(IOException ioe)
+                {
+                    ioe.printStackTrace();
+                }
+            }
+            while(path.contains("../"))
+            {
+                int i = parentDomain.length() - 1;
+                while(parentDomain.charAt(i--) != '/');
+                while(parentDomain.charAt(i--) != '/');
+                parentDomain = parentDomain.substring(0, i + 2);
+                path = path.replaceFirst("../", "");
+            }
+            curDomain = parentDomain.replaceAll("/$", "");
         }
 
-        /* Remove port 80 from HTTP URLs and port 443 from HTTPS URLs. */
-        if(domain.contains("http:") && domain.contains(":80"))
+        /*
+        (4) Remove '/index.htm(l)'.
+        (5) Remove duplicate slashes.
+        (6) Remove the URL part corresponding to a section.
+        */
+        if(path.equalsIgnoreCase("index.htm") ||
+           path.equalsIgnoreCase("index.html"))
         {
-            domain = domain.replace(":80", "");
+            path = "/";
         }
-        else if(domain.contains("https:") && domain.contains(":443"))
+        else
         {
-            domain = domain.replace(":443", "");
+            path = path.replaceAll("/{2,}", "/")
+                       .replaceAll(Properties.REGEX_SECTION, "")
+                       .replaceAll("/$", "");
         }
 
-        /* Remove duplicate slashes. */
-        while(url.charAt(0) == '/')
+        /* (7) Make relative URLs absolute. */
+        if(curDomain.charAt(curDomain.length() - 1) != '/' &&
+           path.length() > 0 &&
+           path.charAt(0) != '/')
         {
-            url = url.substring(1);
+            path = "/" + path;
         }
-        url = url.replaceAll("/{2,}", "/");
-
-        /* Remove the URL part corresponding to a section. */
-        url = url.replaceAll(Properties.REGEX_SECTION, "");
-
-        /* Make relative URLs absolute. */
-        if(domain == null)
-        {
-            domain = parentDomain;
-        }
-        return domain + url;
+        return curDomain + path;
     }
 
     /**
@@ -123,33 +223,82 @@ public class Crawler
     }
 
     /**
-     * Parse the robots file and create a set of disallowed URLs.
-     * @param domain
-     *            The domain whose robots file is to be parsed.
+     * Verify if the URL may be crawled by robots.
+     * @param urlStr
+     *            The URL string.
      * @return
-     *            The set of disallowed URLs.
+     *            'true' iff the URL may be crawled by robots.
+     * @throws IOException
      */
-    public HashSet<String> createDisallowedSet(String domain)
+    public boolean isRobotAllowed(String urlStr)
     {
-        HashSet<String> set = new HashSet<>();
+        BaseRobotRules rules = null;
         try
         {
-            URL url = new URL(domain + Properties.FILE_ROBOTS);
-            br = new BufferedReader(new InputStreamReader(url.openStream()));
-            String line;
+            URL url = new URL(urlStr);
+            String domain = url.getProtocol() + "://" +
+                    url.getHost() +
+                    (url.getPort() > -1 ? ":" + url.getPort() : "");
+            rules = disallowedLinks.get(domain);
 
-            while((line = br.readLine()) != null)
+            if(rules == null)
             {
-                if(line.contains("Disallow:"))
+                HttpResponse res = client.execute(new HttpGet(domain + "/robots.txt"), context);
+                if(res.getStatusLine().getStatusCode() == 404 &&
+                        res.getStatusLine() != null)
                 {
-                    set.add(line.substring(line.indexOf('/')).trim());
+                    rules = new SimpleRobotRules(RobotRulesMode.ALLOW_ALL);
+                    EntityUtils.consume(res.getEntity());
                 }
+                else
+                {
+                    rules = parser.parseContent(domain,
+                            IOUtils.toByteArray(new BufferedHttpEntity(res.getEntity()).getContent()),
+                            "text/plain",
+                            "ASBot");
+                }
+                disallowedLinks.put(domain, rules);
             }
         }
-        catch(MalformedURLException mue) {}
-        catch(IOException ioe) {}
+        catch(IOException ioe)
+        {
+            ioe.printStackTrace();
+        }
 
-        return set;
+        return rules.isAllowed(urlStr);
+    }
+
+    /**
+     * Write the crawled web page's contents to the file system.
+     * @param docNo
+     *            The web page's URL.
+     * @param doc
+     *            The document object.
+     * @throws IOException
+     */
+    public void write(String docNo, Document doc)
+    {
+        try
+        {
+            /* Write the relevant content to the file system. */
+            Utils.echo("Crawled item " + docCount);
+            fw.write("<DOC>\n"  +
+                     "<DOCNO>"  + docNo                    + "</DOCNO>\n" +
+                     "<HEAD>"   + doc.title().trim()       + "</HEAD>\n" +
+                     "<TEXT>\n" + doc.body().text().trim() + "\n</TEXT>\n" +
+                     "</DOC>\n");
+
+            /* Create a new file for every 100 web pages. */
+            if(++docCount % 100 == 1)
+            {
+                fw.close();
+                fw = new FileWriter(Properties.DIR_CRAWL + "/as" + docCount, true);
+            }
+        }
+        catch(IOException ioe)
+        {
+            ioe.printStackTrace();
+        }
     }
 
     /**
@@ -159,7 +308,6 @@ public class Crawler
      * @throws IOException
      */
     public void crawl(String url)
-        throws IOException
     {
         /* Execute the sanity check. */
         if(url == null || url.length() == 0)
@@ -168,7 +316,7 @@ public class Crawler
         }
 
         /* Declare and define the data structures. */
-        Connection conn;
+        Response res = null;
         Document doc;
         Map map = new Map();
         HashSet<String> disallowedSet;
@@ -178,30 +326,49 @@ public class Crawler
         outLinks.put(url, new HashSet<String>());
 
         /* Crawl web pages using breadth-first search. */
-        while(map.size() > 0)
+        while(map.size() > 0 && docCount <= 200)
         {
-            url  = map.remove().getUrl();
-            conn = Jsoup.connect(url);
-            doc  = conn.get();
-            disallowedSet = createDisallowedSet(domain(url));
-
-            for(Element e : doc.select("a[href]"))
+            try
             {
-                if(!disallowedSet.contains(e.toString()))
+                url  = map.remove().getUrl();
+                Thread.sleep(1000);
+                res = Jsoup.connect(url).execute();
+                /* Process HTML pages only. */
+                if(res == null || !res.contentType().contains("text/html"))
                 {
-                    String newUrl = canonicalUrl(e.toString(), domain(url));
-                    /* Update data structures for the parent URL. */
-                    outLinks.get(url).add(newUrl);
-
-                    /* Create and update data structures for the child URL. */
-                    if (!inLinks.containsKey(newUrl))
-                    {
-                        inLinks.put(newUrl, new HashSet<String>());
-                        outLinks.put(newUrl, new HashSet<String>());
-                    }
-                    inLinks.get(newUrl).add(url);
-                    map.update(newUrl);
+                    continue;
                 }
+
+                Utils.echo("Crawling " + url);
+                doc = res.parse();
+                /* Add crawled contents to the document collection. */
+                write(url, doc);
+
+                for(Element e : doc.select("a[href]"))
+                {
+                    String newUrl = canonicalUrl(e.toString(), url);
+                    if(newUrl != null && isRobotAllowed(newUrl))
+                    {
+                        /* Update data structures for the parent URL. */
+                        outLinks.get(url).add(newUrl);
+
+                        /* Create and update data structures for the child URL. */
+                        if (!inLinks.containsKey(newUrl))
+                        {
+                            inLinks.put(newUrl, new HashSet<String>());
+                            outLinks.put(newUrl, new HashSet<String>());
+                        }
+                        inLinks.get(newUrl).add(url);
+                        map.update(newUrl);
+                    }
+                }
+            }
+            catch(InterruptedException intre) { /* TODO */ }
+            catch(IOException ioe)
+            {
+                ioe.printStackTrace();
+                Utils.error(ioe.getMessage());
+                Utils.echo("Ignoring " + url);
             }
         }
     }
@@ -212,19 +379,18 @@ public class Crawler
      *            Program arguments.
      */
     public static void main(String[] args)
+        throws IOException
     {
+        /* Calculate start time */
+        long startTime = System.nanoTime();
         Utils.cout("\n=======");
         Utils.cout("\nCRAWLER");
         Utils.cout("\n=======");
         Utils.cout("\n");
 
         Crawler c = new Crawler();
-
-        /* Test individual functions. */
-        Utils.cout(">Domains and Canonical URLs\n");
-        Utils.cout(c.domain("https://www.facebook.com/people/leosFacemash") + "\n");
-        Utils.cout(c.canonicalUrl("HTTPS://www.facebook.COM:443///people////leosFacemash#about",
-                                  "http://www.dmoz.org/") + "\n");
+        c.crawl("http://www.dmoz.org/");
+        Utils.elapsedTime(startTime, "\nCrawling of web pages completed.");
     }
 }
 /* End of Crawler.java */
