@@ -7,25 +7,14 @@ package com.ir.crawl;
 
 public class Frontier
 {
-    /* Static data members */
-    private static int _id;
-
-    /* Non-static data members */
-    private int id;
     private String url;
     private int inLinkCount;
-
-    static
-    {
-        _id = -1;
-    }
 
     /**
      * Constructor 1.
      */
     public Frontier()
     {
-        id          = ++_id;
         url         = "";
         inLinkCount = 0;
     }
@@ -33,42 +22,59 @@ public class Frontier
     /**
      * Constructor 2.
      * @param url
-     *            The canonicalized page URL.
+     *            The URL.
      * @param inLinkCount
      *            The in-link count.
      */
     public Frontier(String url, int inLinkCount)
     {
-        id               = ++_id;
         this.url         = url;
         this.inLinkCount = inLinkCount;
     }
 
-    public int getId()
-    {
-        return id;
-    }
-
+    /**
+     * Set the URL
+     * @param url
+     *            The URL.
+     */
     public void setUrl(String url)
     {
         this.url = url;
     }
 
+    /**
+     * Get the URL.
+     * @return
+     *            The URL.
+     */
     public String getUrl()
     {
         return url;
     }
 
+    /**
+     * Set the in-link count.
+     * @param inLinkCount
+     *            The in-link count.
+     */
     public void setInLinkCount(int inLinkCount)
     {
         this.inLinkCount = inLinkCount;
     }
 
+    /**
+     * Increment the in-link count by 1.
+     */
     public void incrInLinkCount()
     {
         this.inLinkCount++;
     }
 
+    /**
+     * Get the in-link count.
+     * @return
+     *            The in-link count.
+     */
     public int getInLinkCount()
     {
         return inLinkCount;

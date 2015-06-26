@@ -1,6 +1,7 @@
 package com.ir.crawl;
 
 /* Import list */
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import com.ir.global.Properties;
 
@@ -11,33 +12,136 @@ import com.ir.global.Properties;
 
 public class Map
 {
-    private static int size = 0;
+    /* Static data members. */
+    private static HashSet<String> visited;
+    /* Non-static data members. */
     private LinkedHashMap<String, Integer> map;
 
-    /**
-     * Constructor
-     */
-    public Map()
+    /* Inner class */
+    class Tuple
     {
-        map = new LinkedHashMap<String, Integer>();
+        String url;
+        boolean present;
+
+        /**
+         * Inner class' constructor.
+         * @param url
+         *           A string.
+         * @param present
+         *           A boolean variable.
+         */
+        Tuple(String url, boolean present)
+        {
+            this.url = url;
+            this.present = present;
+        }
+    }
+
+    static
+    {
+        visited = new HashSet<>();
     }
 
     /**
-     * Add a URL and its in-link count to the Frontier.
-     * @param url
-     *            The web page's URL.
-     * @param inLinkCount
-     *            The web page's in-link count.
+     * Constructor.
+     */
+    public Map()
+    {
+        map     = new LinkedHashMap<>();
+    }
+
+    /**
+     * Get the internal map.
      * @return
-     *            'true' iff the key-value pair was added successfully.
+     *            The internal map.
+     */
+    public LinkedHashMap<String, Integer> getMap()
+    {
+        return map;
+    }
+
+    /**
+     * Check if the object contains the URL.
+     * @param obj
+     *            The object.
+     * @param url
+     *            The URL.
+     * @return
+     *           'true' iff the object contains the URL.
+     */
+    public boolean contains(Object obj, String url)
+    {
+        if(obj instanceof HashSet)
+        {
+            return ((HashSet) obj).contains(url);
+        }
+        else
+        {
+            return ((LinkedHashMap) obj).containsKey(url);
+        }
+    }
+
+    /**
+     * Check if the object contains any form of the URL.
+     * @param obj
+     *            The object.
+     * @param url
+     *            The URL.
+     * @return
+     *            'true' iff the object contains a form of the URL.
+     */
+    public Tuple containsForm(Object obj, String url)
+    {
+        String minUrl = url.replaceAll(Properties.REGEX_MINURL, "");
+        boolean present = false;
+
+        if(contains(obj, "http://" + minUrl))
+        {
+            url     = "http://" + minUrl;
+            present = true;
+        }
+        else if(contains(obj, "https://" + minUrl))
+        {
+            url     = "https://" + minUrl;
+            present = true;
+        }
+        else if(contains(obj, "http://www." + minUrl))
+        {
+            url     = "http://www." + minUrl;
+            present = true;
+        }
+        else if(contains(obj, "https://www." + minUrl))
+        {
+            url     = "https://www." + minUrl;
+            present = true;
+        }
+
+        return new Tuple(url, present);
+    }
+
+    /**
+     * Check if the map contains the URL.
+     * @param url
+     *            The URL.
+     * @return
+     *            'true' iff the map contains the URL.
+     */
+    public boolean containsKey(String url)
+    {
+        return containsForm(map, url).present;
+    }
+
+    /**
+     * Add a URL and its in-link count to the map.
+     * @param url
+     *            The URL.
+     * @param inLinkCount
+     *            The in-link count.
+     * @return
+     *            'true' iff the key-value pair is added successfully.
      */
     public boolean add(String url, Integer inLinkCount)
     {
-        /* Sanity check */
-        if(url == null || url.length() == 0)
-        {
-            return false;
-        }
         /* Do not add entries belonging to the list of restricted domains. */
         for(String restrictedDomain : Properties.restrictedDomains)
         {
@@ -48,32 +152,34 @@ public class Map
         }
 
         map.put(url, inLinkCount);
-        size++;
         return true;
     }
 
     /**
-     * Update the Frontier for the given URL.
+     * Update the entry corresponding to the URL.
      * @param url
-     *            The web page's URL.
+     *            The URL.
      * @return
-     *            'true' if the in-link count for the URL is updated
-     *            successfully.
+     *            'true' if the map is updated successfully.
      */
     public boolean update(String url)
     {
-        /* Add to the map if the key is not present. */
-        if(!map.containsKey(url))
+        Tuple t1 = containsForm(map, url);
+        Tuple t2 = containsForm(visited, url);
+
+        /* URL is not present and hasn't been visited. */
+        if(!t1.present && !t2.present)
         {
             return add(url, 1);
         }
-        /* Don't add to the map if the key has previously been removed. */
-        if(map.get(url) == Properties.FLAG_REMOVED)
+        /* URL has been visited. */
+        else if(t2.present)
         {
             return false;
         }
-        /* If none of the above condition are met, add to the map and return. */
-        map.put(url, map.get(url) + 1);
+
+        /* If none of the above condition are met, update the map. */
+        map.put(t1.url, map.get(t1.url) + 1);
         return true;
     }
 
@@ -84,12 +190,12 @@ public class Map
      */
     public Frontier remove()
     {
-        if(size == 0)
+        if(map.size() == 0)
         {
             return null;
         }
 
-        /* Flag and return the canonical Frontier. */
+        /* Mark the canonical Frontier as visited and return it. */
         String maxKey = "";
         int maxValue = Integer.MIN_VALUE;
         for(String key : map.keySet())
@@ -100,9 +206,17 @@ public class Map
                 maxValue = map.get(key);
             }
         }
-        map.put(maxKey, Properties.FLAG_REMOVED);
-        size--;
+        map.remove(maxKey);
+        visited.add(maxKey);
         return new Frontier(maxKey, maxValue);
+    }
+
+    /**
+     * Clear the map.
+     */
+    public void clear()
+    {
+        map.clear();
     }
 
     /**
@@ -112,33 +226,7 @@ public class Map
      */
     public int size()
     {
-        return size;
-    }
-
-    /**
-     * Main method for unit testing.
-     * @param args
-     *            Program arguments.
-     */
-    public static void main(String[] args)
-    {
-        Map map = new Map();
-
-        /* Add entries to the map. */
-        map.add("a", 2);
-        map.add("b", 4);
-        map.add("c", 1);
-        map.add("d", 2);
-        map.add("e", 2);
-        map.add("f", 0);
-
-        /* Iterate over the map. */
-        Frontier f = null;
-        while((f = map.remove()) != null)
-        {
-            System.out.println("URL: "           + f.getUrl());
-            System.out.println("In-link count: " + f.getInLinkCount());
-        }
+        return map.size();
     }
 }
 /* End of Map.java */
