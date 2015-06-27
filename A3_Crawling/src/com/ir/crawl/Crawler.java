@@ -151,8 +151,12 @@ public class Crawler
                 while(path.contains("../"))
                 {
                     int i = parentDomain.length() - 1;
-                    while(parentDomain.charAt(i--) != '/');
-                    while(parentDomain.charAt(i--) != '/');
+                    while(i > 0 && parentDomain.charAt(i--) != '/');
+                    while(i > 0 && parentDomain.charAt(i--) != '/');
+                    if(i == 0)
+                    {
+                        return null;
+                    }
                     parentDomain = parentDomain.substring(0, i + 2);
                     path = path.replaceFirst("../", "");
                 }
@@ -178,8 +182,8 @@ public class Crawler
 
             /* (7) Make relative URLs absolute. */
             if(curDomain.charAt(curDomain.length() - 1) != '/' &&
-                    path.length() > 0 &&
-                    path.charAt(0) != '/')
+               path.length() > 0 &&
+               path.charAt(0) != '/')
             {
                 path = "/" + path;
             }
@@ -267,13 +271,15 @@ public class Crawler
             {
                 sb.append(s + " ");
             }
+            outLinks.remove(docNo);
 
             /* Write to the file. */
             docWriter.write("<DOC>\n"    +
-                            "<DOCNO>"    + docNo                  + "</DOCNO>\n" +
-                            "<HEAD>"     + doc.title().trim()     + "</HEAD>\n" +
-                            "<OUTLINKS>" + sb.toString().trim()   + "</OUTLINKS>\n" +
-                            "<TEXT>\n" + doc.body().text().trim() + "\n</TEXT>\n" +
+                            "<DOCNO>"    + docNo                    + "</DOCNO>\n"    +
+                            "<HEAD>"     + doc.title().trim()       + "</HEAD>\n"     +
+                            "<OUTLINKS>" + sb.toString().trim()     + "</OUTLINKS>\n" +
+                            "<TEXT>\n"   + doc.body().text().trim() + "\n</TEXT>\n"   +
+                            "<HTML>\n"   + doc.html()               + "\n</HTML>\n"   +
                             "</DOC>\n");
 
             /* Create a new file after every 100 web pages. */
@@ -311,6 +317,18 @@ public class Crawler
     }
 
     /**
+     * Move to the next level if the current level has been completely processed.
+     */
+    public void nextFrontier(Map map, Map newMap)
+    {
+        if(map.size() == 0)
+        {
+            map.getMap().putAll(newMap.getMap());
+            newMap.clear();
+        }
+    }
+
+    /**
      * Crawl web pages beginning from the list of seed URLs.
      * @param urls
      *            The seed URLs.
@@ -345,6 +363,7 @@ public class Crawler
                 url = map.remove().getUrl();
                 if(!isRobotAllowed(url))
                 {
+                    nextFrontier(map, newMap);
                     continue;
                 }
 
@@ -353,6 +372,7 @@ public class Crawler
                 /* Process only HTML pages. */
                 if(res == null || !res.contentType().contains("text/html"))
                 {
+                    nextFrontier(map, newMap);
                     continue;
                 }
 
@@ -366,7 +386,7 @@ public class Crawler
                     }
 
                     String newUrl = canonicalUrl(e.toString(), url);
-                    if(newUrl != null)
+                    if(newUrl != null && !newUrl.equals(url))
                     {
                         /* Update data structures for the parent URL. */
                         outLinks.get(url).add(newUrl);
@@ -380,21 +400,17 @@ public class Crawler
                         inLinks.get(newUrl).add(url);
                         if(map.containsKey(newUrl))
                         {
-                            map.update(newUrl);
+                            map.update(newUrl, inLinks.get(newUrl).size());
                         }
-                        newMap.update(newUrl);
+                        else
+                        {
+                            newMap.update(newUrl, inLinks.get(newUrl).size());
+                        }
                     }
                 }
                 /* Add crawled contents to the document collection. */
                 writeDocument(url, doc);
-
-                /* Move to the next level if the current level has been completely
-                processed. */
-                if(map.size() == 0)
-                {
-                    map.getMap().putAll(newMap.getMap());
-                    newMap.clear();
-                }
+                nextFrontier(map, newMap);
             }
             catch(InterruptedException intre)
             {
@@ -436,8 +452,6 @@ public class Crawler
             urls.add("http://en.wikipedia.org/wiki/History_of_Apple_Inc.");
             urls.add("http://en.wikipedia.org/wiki/OS_X_Yosemite");
             urls.add("http://en.wikipedia.org/wiki/IOS");
-            // urls.clear();
-            // urls.add("http://www.dmoz.org/");
 
             /* Crawl the internet. */
             c.crawl(urls);

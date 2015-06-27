@@ -162,7 +162,7 @@ public class Map
      * @return
      *            'true' if the map is updated successfully.
      */
-    public boolean update(String url)
+    public boolean update(String url, int inLinkCount)
     {
         Tuple t1 = containsForm(map, url);
         Tuple t2 = containsForm(visited, url);
@@ -179,7 +179,7 @@ public class Map
         }
 
         /* If none of the above condition are met, update the map. */
-        map.put(t1.url, map.get(t1.url) + 1);
+        map.put(t1.url, inLinkCount);
         return true;
     }
 
