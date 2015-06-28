@@ -17,26 +17,6 @@ public class Map
     /* Non-static data members. */
     private LinkedHashMap<String, Integer> map;
 
-    /* Inner class */
-    class Tuple
-    {
-        String url;
-        boolean present;
-
-        /**
-         * Inner class' constructor.
-         * @param url
-         *           A string.
-         * @param present
-         *           A boolean variable.
-         */
-        Tuple(String url, boolean present)
-        {
-            this.url = url;
-            this.present = present;
-        }
-    }
-
     static
     {
         visited = new HashSet<>();
@@ -47,7 +27,43 @@ public class Map
      */
     public Map()
     {
-        map     = new LinkedHashMap<>();
+        map = new LinkedHashMap<>();
+    }
+
+    /**
+     * Mark the URL as visited.
+     * @param url
+     *            The URL.
+     * @return
+     *            'true' iff the set did not already contain the URL.
+     */
+    public static boolean visit(String url)
+    {
+        return visited.add(url);
+    }
+
+    /**
+     * Mark the URL as not visited.
+     * @param url
+     *            The URL.
+     * @return
+     *            'true' if the set contained the specified element.
+     */
+    public static boolean unvisit(String url)
+    {
+        return visited.remove(url);
+    }
+
+    /**
+     * Check if the URL has been visited.
+     * @param url
+     *            The URL.
+     * @return
+     *            'true' iff the set contains the URL.
+     */
+    public static boolean visited(String url)
+    {
+        return visited.contains(url);
     }
 
     /**
@@ -61,66 +77,7 @@ public class Map
     }
 
     /**
-     * Check if the object contains the URL.
-     * @param obj
-     *            The object.
-     * @param url
-     *            The URL.
-     * @return
-     *           'true' iff the object contains the URL.
-     */
-    public boolean contains(Object obj, String url)
-    {
-        if(obj instanceof HashSet)
-        {
-            return ((HashSet) obj).contains(url);
-        }
-        else
-        {
-            return ((LinkedHashMap) obj).containsKey(url);
-        }
-    }
-
-    /**
-     * Check if the object contains any form of the URL.
-     * @param obj
-     *            The object.
-     * @param url
-     *            The URL.
-     * @return
-     *            'true' iff the object contains a form of the URL.
-     */
-    public Tuple containsForm(Object obj, String url)
-    {
-        String minUrl = url.replaceAll(Properties.REGEX_MINURL, "");
-        boolean present = false;
-
-        if(contains(obj, "http://" + minUrl))
-        {
-            url     = "http://" + minUrl;
-            present = true;
-        }
-        else if(contains(obj, "https://" + minUrl))
-        {
-            url     = "https://" + minUrl;
-            present = true;
-        }
-        else if(contains(obj, "http://www." + minUrl))
-        {
-            url     = "http://www." + minUrl;
-            present = true;
-        }
-        else if(contains(obj, "https://www." + minUrl))
-        {
-            url     = "https://www." + minUrl;
-            present = true;
-        }
-
-        return new Tuple(url, present);
-    }
-
-    /**
-     * Check if the map contains the URL.
+     * Check if the map contains the key.
      * @param url
      *            The URL.
      * @return
@@ -128,7 +85,7 @@ public class Map
      */
     public boolean containsKey(String url)
     {
-        return containsForm(map, url).present;
+        return map.containsKey(url);
     }
 
     /**
@@ -164,22 +121,19 @@ public class Map
      */
     public boolean update(String url, int inLinkCount)
     {
-        Tuple t1 = containsForm(map, url);
-        Tuple t2 = containsForm(visited, url);
-
         /* URL is not present and hasn't been visited. */
-        if(!t1.present && !t2.present)
+        if(!map.containsKey(url) && !visited.contains(url))
         {
             return add(url, 1);
         }
         /* URL has been visited. */
-        else if(t2.present)
+        else if(visited.contains(url))
         {
             return false;
         }
 
         /* If none of the above condition are met, update the map. */
-        map.put(t1.url, inLinkCount);
+        map.put(url, inLinkCount);
         return true;
     }
 

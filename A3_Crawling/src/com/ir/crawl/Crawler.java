@@ -86,7 +86,7 @@ public class Crawler
     {
         int port = url.getPort();
         if((url.getProtocol().equals("http")  && port == 80) ||
-                (url.getProtocol().equals("https") && port == 443))
+           (url.getProtocol().equals("https") && port == 443))
         {
             port = -1;
         }
@@ -168,16 +168,18 @@ public class Crawler
             (5) Remove duplicate slashes.
             (6) Remove section URL.
             */
-            if(path.equalsIgnoreCase("index.htm") ||
-                    path.equalsIgnoreCase("index.html"))
+            if(path.equalsIgnoreCase("index.htm")  ||
+               path.equalsIgnoreCase("index.html") ||
+               path.equalsIgnoreCase("index.asp")  ||
+               path.equalsIgnoreCase("index.aspx"))
             {
                 path = "/";
             }
             else
             {
                 path = path.replaceAll("/{2,}", "/")
-                        .replaceAll(Properties.REGEX_SECTION, "")
-                        .replaceAll("/$", "");
+                       .replaceAll(Properties.REGEX_SECTION, "")
+                       .replaceAll("/$", "");
             }
 
             /* (7) Make relative URLs absolute. */
@@ -303,15 +305,20 @@ public class Crawler
     public void writeGraph()
         throws IOException
     {
+        Utils.cout("\n>Writing the connectivity graph to the file system\n");
         FileWriter graphWriter = new FileWriter(Properties.FILE_GRAPH, true);
+
         for(String url : inLinks.keySet())
         {
-            StringBuilder sb = new StringBuilder(url + " ");
-            for(String s : inLinks.get(url))
+            if(Map.visited(url))
             {
-                sb.append(s + " ");
+                StringBuilder sb = new StringBuilder(url + " ");
+                for(String s : inLinks.get(url))
+                {
+                    sb.append(s + " ");
+                }
+                graphWriter.write(sb.toString().trim() + "\n");
             }
-            graphWriter.write(sb.toString().trim() + "\n");
         }
         graphWriter.close();
     }
@@ -323,6 +330,9 @@ public class Crawler
     {
         if(map.size() == 0)
         {
+            Utils.cout("\n");
+            Utils.echo("All nodes at the current depth have been visited");
+            Utils.echo("Moving one level deeper with " + newMap.size() + " nodes to process\n");
             map.getMap().putAll(newMap.getMap());
             newMap.clear();
         }
@@ -355,23 +365,22 @@ public class Crawler
         }
 
         /* Implement breadth-first search. */
-        while(map.size() > 0 && docCount <= 20000)
+        while(map.size() > 0 && docCount <= 21000)
         {
             String url = null;
             try
             {
                 url = map.remove().getUrl();
-                if(!isRobotAllowed(url))
-                {
-                    nextFrontier(map, newMap);
-                    continue;
-                }
-
-                Thread.sleep(1000);
+                Thread.sleep(500);
                 res = Jsoup.connect(url).userAgent(Properties.AGENT_MOZILLA).timeout(2000).execute();
                 /* Process only HTML pages. */
-                if(res == null || !res.contentType().contains("text/html"))
+                if(res == null ||
+                   !res.contentType().contains("text/html") ||
+                   !isRobotAllowed(url))
                 {
+                    inLinks.remove(url);
+                    outLinks.remove(url);
+                    Map.unvisit(url);
                     nextFrontier(map, newMap);
                     continue;
                 }
@@ -380,6 +389,7 @@ public class Crawler
                 doc = res.parse();
                 for(Element e : doc.select("a[href]"))
                 {
+                    /* Avoid JavaScript pop-ups. */
                     if(e.toString().contains("javascript"))
                     {
                         continue;
@@ -392,18 +402,15 @@ public class Crawler
                         outLinks.get(url).add(newUrl);
 
                         /* Create and update data structures for the child URL. */
-                        if (!inLinks.containsKey(newUrl))
+                        if(map.containsKey(newUrl))
+                        {
+                            inLinks.get(newUrl).add(url);
+                            map.update(newUrl, inLinks.get(newUrl).size());
+                        }
+                        else if(map.size() < 100000)
                         {
                             inLinks.put(newUrl, new HashSet<String>());
                             outLinks.put(newUrl, new HashSet<String>());
-                        }
-                        inLinks.get(newUrl).add(url);
-                        if(map.containsKey(newUrl))
-                        {
-                            map.update(newUrl, inLinks.get(newUrl).size());
-                        }
-                        else
-                        {
                             newMap.update(newUrl, inLinks.get(newUrl).size());
                         }
                     }
