@@ -365,13 +365,13 @@ public class Crawler
         }
 
         /* Implement breadth-first search. */
-        while(map.size() > 0 && docCount <= 21000)
+        while(map.size() > 0 && docCount <= 20000)
         {
             String url = null;
             try
             {
                 url = map.remove().getUrl();
-                Thread.sleep(500);
+                Thread.sleep(300);
                 res = Jsoup.connect(url).userAgent(Properties.AGENT_MOZILLA).timeout(2000).execute();
                 /* Process only HTML pages. */
                 if(res == null ||
@@ -402,15 +402,18 @@ public class Crawler
                         outLinks.get(url).add(newUrl);
 
                         /* Create and update data structures for the child URL. */
+                        if(!inLinks.containsKey(newUrl))
+                        {
+                            inLinks.put(newUrl, new HashSet<String>());
+                            outLinks.put(newUrl, new HashSet<String>());
+                        }
+                        inLinks.get(newUrl).add(url);
                         if(map.containsKey(newUrl))
                         {
-                            inLinks.get(newUrl).add(url);
                             map.update(newUrl, inLinks.get(newUrl).size());
                         }
                         else if(map.size() < 100000)
                         {
-                            inLinks.put(newUrl, new HashSet<String>());
-                            outLinks.put(newUrl, new HashSet<String>());
                             newMap.update(newUrl, inLinks.get(newUrl).size());
                         }
                     }

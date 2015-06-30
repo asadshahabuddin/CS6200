@@ -1,5 +1,6 @@
 package com.ir.global;
 
+/* Import list */
 import java.util.ArrayList;
 
 /**
@@ -19,9 +20,10 @@ public class Properties
     public static final String REGEX_MINURL  = "http\\w{0,1}://(w{3}\\.|)";
 
     /* Directories and files */
-    public static final String DIR_CRAWL   = "E:/Home/Repository/Java/IdeaProjects/A3_Crawling/crawl";
-    public static final String FILE_ROBOTS = "robots.txt";
-    public static final String FILE_GRAPH  = "graph.txt";
+    public static final String DIR_CRAWL        = "E:/Home/Repository/Java/IdeaProjects/A3_Crawling/crawl";
+    public static final String FILE_ROBOTS      = "robots.txt";
+    public static final String FILE_GRAPH       = "graph.txt";
+    public static final String FILE_INDEXED_OBJ = "indexed.set";
 
     /* Restricted domains */
     public static ArrayList<String> restrictedDomains = new ArrayList<>();
