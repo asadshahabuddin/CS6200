@@ -3,20 +3,17 @@ package com.ir.index;
 /* Import list */
 import java.io.*;
 import java.util.*;
-
+import org.json.JSONObject;
 import com.ir.global.Utils;
 import com.ir.global.Properties;
-import org.elasticsearch.action.update.UpdateRequest;
-import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 /**
