@@ -2,16 +2,21 @@ package com.ir.index;
 
 /* Import list */
 import java.io.*;
-import java.util.List;
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.ArrayList;
+import java.util.*;
+
 import com.ir.global.Utils;
 import com.ir.global.Properties;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 /**
@@ -239,13 +244,13 @@ public class Indexer
                 graph.remove(docNo);
 
                 builderList.add(XContentFactory.jsonBuilder()
-                        .startObject()
-                        .field("docno", docNo)
-                        .field("text", text.toString())
-                        .field("inlinks", inLinks.toString().trim())
-                        .field("outlinks", outLinks)
-                        .field("html", html)
-                        .endObject());
+                           .startObject()
+                           .field("docno", docNo)
+                           .field("text", text.toString())
+                           .field("inlinks", inLinks.toString().trim())
+                           .field("outlinks", outLinks)
+                           .field("html", html)
+                           .endObject());
                 text    = new StringBuilder();
                 html    = new StringBuilder();
                 inLinks = new StringBuilder();
@@ -307,20 +312,48 @@ public class Indexer
                     {
                         Utils.echo("Processed the data for " + id + " documents");
                     }
-                    client.prepareIndex("ak_dataset", "document", "" + builder.field("docno"))
-                          .setSource(builder)
-                          .execute()
-                          .actionGet();
+                    String docNo = String.valueOf(new JSONObject(XContentHelper.convertToJson(
+                        builder.bytes(), false)).get("docno"));
+                    SearchResponse res = client.prepareSearch("ras_dataset")
+                                               .setTypes("document")
+                                               .setQuery(QueryBuilders.matchQuery("docno", docNo))
+                                               .setExplain(true)
+                                               .execute()
+                                               .actionGet();
+                    if(!String.valueOf(res.getHits().getHits()[0].getSource().get("docno")).equals(docNo))
+                    {
+                        client.prepareIndex("ras_dataset", "document", "" + docNo)
+                              .setSource(builder)
+                              .execute()
+                              .actionGet();
+                    }
+                    else
+                    {
+                        HashSet<String> inLinkSet = new HashSet<>(
+                            Arrays.asList(res.getHits().getHits()[0].getSource().get("inlinks").toString().split(" ")));
+                        Collections.addAll(inLinkSet, String.valueOf(
+                            new JSONObject(XContentHelper.convertToJson(builder.bytes(), false)).get("inlinks")).split(" "));
+                        StringBuilder inLinks = new StringBuilder();
+                        for(String s : inLinkSet)
+                        {
+                            inLinks.append(s + " ");
+                        }
+                        client.update(new UpdateRequest("ras_dataset", "document", "" + docNo)
+                                      .doc(XContentFactory.jsonBuilder()
+                                           .startObject()
+                                           .field("inlinks", "http://www.google.com/")
+                                           .endObject())).get();
+                    }
                     ++id;
                 }
             }
             Utils.echo("Processed the data for " + id + " documents");
         }
-        catch(IOException ioe)
+        catch(Exception e)
         {
-            Utils.error("I/O Exception in main(...)");
+            Utils.error("Exception in main(...)");
             Utils.cout(">Stack trace\n");
-            ioe.printStackTrace();
+            e.printStackTrace();
             Utils.cout("\n");
         }
         finally

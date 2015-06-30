@@ -9,7 +9,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import com.ir.global.Utils;
 import java.util.ArrayList;
-import java.io.BufferedReader;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import org.jsoup.nodes.Element;
@@ -37,10 +36,8 @@ public class Crawler
 {
     /* Static data members */
     private static int docCount;
-    private static BufferedReader br;
     private static FileWriter docWriter;
     private static Pattern urlPattern;
-    private static Pattern domainPattern;
     private static SimpleRobotRulesParser parser;
 
     /* Non-static data members */
@@ -56,7 +53,6 @@ public class Crawler
             docCount      = 1;
             docWriter     = new FileWriter(Properties.DIR_CRAWL + "/as" + docCount, true);
             urlPattern    = Pattern.compile(Properties.REGEX_URL);
-            domainPattern = Pattern.compile(Properties.REGEX_DOMAIN);
             parser        = new SimpleRobotRulesParser();
         }
         catch(IOException ioe)
@@ -264,6 +260,17 @@ public class Crawler
      */
     public void writeDocument(String docNo, Document doc)
     {
+        if(docNo       == null ||
+           doc         == null ||
+           doc.title() == null ||
+           doc.body()  == null ||
+           doc.html()  == null)
+        {
+            Map.unvisit(docNo);
+            outLinks.remove(docNo);
+            return;
+        }
+
         try
         {
             Utils.echo("Crawled item " + docCount);
@@ -365,14 +372,14 @@ public class Crawler
         }
 
         /* Implement breadth-first search. */
-        while(map.size() > 0 && docCount <= 20000)
+        while(map.size() > 0 && docCount <= 21000)
         {
             String url = null;
             try
             {
                 url = map.remove().getUrl();
                 Thread.sleep(300);
-                res = Jsoup.connect(url).userAgent(Properties.AGENT_MOZILLA).timeout(2000).execute();
+                res = Jsoup.connect(url).userAgent(Properties.AGENT_MOZILLA).timeout(6000).execute();
                 /* Process only HTML pages. */
                 if(res == null ||
                    !res.contentType().contains("text/html") ||
@@ -402,18 +409,19 @@ public class Crawler
                         outLinks.get(url).add(newUrl);
 
                         /* Create and update data structures for the child URL. */
-                        if(!inLinks.containsKey(newUrl))
-                        {
-                            inLinks.put(newUrl, new HashSet<String>());
-                            outLinks.put(newUrl, new HashSet<String>());
-                        }
-                        inLinks.get(newUrl).add(url);
                         if(map.containsKey(newUrl))
                         {
+                            inLinks.get(newUrl).add(url);
                             map.update(newUrl, inLinks.get(newUrl).size());
                         }
                         else if(map.size() < 100000)
                         {
+                            if(!inLinks.containsKey(newUrl))
+                            {
+                                inLinks.put(newUrl, new HashSet<String>());
+                                outLinks.put(newUrl, new HashSet<String>());
+                            }
+                            inLinks.get(newUrl).add(url);
                             newMap.update(newUrl, inLinks.get(newUrl).size());
                         }
                     }
@@ -462,6 +470,11 @@ public class Crawler
             urls.add("http://en.wikipedia.org/wiki/History_of_Apple_Inc.");
             urls.add("http://en.wikipedia.org/wiki/OS_X_Yosemite");
             urls.add("http://en.wikipedia.org/wiki/IOS");
+            urls.clear();
+            urls.add("http://en.wikipedia.org/wiki/History_of_Apple_Inc.");
+            urls.add("http://en.wikipedia.org/wiki/Apple_Maps");
+            urls.add("http://www.theguardian.com/technology/2013/nov/11/apple-maps-google-iphone-users");
+            urls.add("http://www.eweek.com/mobile/apple-fires-maps-manager-after-controversy-surrounding-app");
 
             /* Crawl the internet. */
             c.crawl(urls);
