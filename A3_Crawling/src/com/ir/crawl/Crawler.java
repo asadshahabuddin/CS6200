@@ -378,7 +378,7 @@ public class Crawler
             try
             {
                 url = map.remove().getUrl();
-                Thread.sleep(300);
+                Thread.sleep(1000);
                 res = Jsoup.connect(url).userAgent(Properties.AGENT_MOZILLA).timeout(6000).execute();
                 /* Process only HTML pages. */
                 if(res == null ||
@@ -470,11 +470,6 @@ public class Crawler
             urls.add("http://en.wikipedia.org/wiki/History_of_Apple_Inc.");
             urls.add("http://en.wikipedia.org/wiki/OS_X_Yosemite");
             urls.add("http://en.wikipedia.org/wiki/IOS");
-            urls.clear();
-            urls.add("http://en.wikipedia.org/wiki/History_of_Apple_Inc.");
-            urls.add("http://en.wikipedia.org/wiki/Apple_Maps");
-            urls.add("http://www.theguardian.com/technology/2013/nov/11/apple-maps-google-iphone-users");
-            urls.add("http://www.eweek.com/mobile/apple-fires-maps-manager-after-controversy-surrounding-app");
 
             /* Crawl the internet. */
             c.crawl(urls);

@@ -14,6 +14,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.transport.RemoteTransportException;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 /**
@@ -198,6 +199,7 @@ public class Indexer
         BufferedReader br = new BufferedReader(new FileReader(file));
         String line;
         String docNo    = "";
+        String title    = "";
         String outLinks = "";
         StringBuilder text    = new StringBuilder();
         StringBuilder html    = new StringBuilder();
@@ -213,6 +215,11 @@ public class Indexer
                     {
                         docNo = line.substring(line.indexOf(">") + 1,
                                                line.indexOf("</")).trim();
+                    }
+                    else if(line.contains("<HEAD>"))
+                    {
+                        title = line.substring(line.indexOf(">") + 1,
+                                line.indexOf("</")).trim();
                     }
                     else if(line.contains("<OUTLINKS>"))
                     {
@@ -234,20 +241,21 @@ public class Indexer
                         }
                     }
                 }
-                for(String s : graph.get(docNo))
+                for (String s : graph.get(docNo))
                 {
                     inLinks.append(s + " ");
                 }
                 graph.remove(docNo);
 
                 builderList.add(XContentFactory.jsonBuilder()
-                           .startObject()
-                           .field("docno", docNo)
-                           .field("text", text.toString())
-                           .field("inlinks", inLinks.toString().trim())
-                           .field("outlinks", outLinks)
-                           .field("html", html)
-                           .endObject());
+                        .startObject()
+                        .field("docno", docNo)
+                        .field("title", title)
+                        .field("text", text.toString())
+                        .field("inlinks", inLinks.toString().trim())
+                        .field("outlinks", outLinks)
+                        .field("html", html)
+                        .endObject());
                 text    = new StringBuilder();
                 html    = new StringBuilder();
                 inLinks = new StringBuilder();
@@ -305,43 +313,57 @@ public class Indexer
                 /* Iterate through the list of documents and index each one. */
                 for (XContentBuilder builder : builders)
                 {
-                    if(id % 1000 == 0)
-                    {
-                        Utils.echo("Processed the data for " + id + " documents");
-                    }
                     String docNo = String.valueOf(new JSONObject(XContentHelper.convertToJson(
                         builder.bytes(), false)).get("docno"));
-                    SearchResponse res = client.prepareSearch("ras_dataset")
-                                               .setTypes("document")
-                                               .setQuery(QueryBuilders.matchQuery("docno", docNo))
-                                               .setExplain(true)
-                                               .execute()
-                                               .actionGet();
-                    if(!String.valueOf(res.getHits().getHits()[0].getSource().get("docno")).equals(docNo))
+                    try
                     {
+                        if(id % 100 == 0)
+                        {
+                            Utils.echo("Processed the data for " + id + " documents");
+                        }
+                        SearchResponse res = client.prepareSearch("ras_dataset")
+                                                   .setTypes("document")
+                                                   .setQuery(QueryBuilders.matchQuery("docno", docNo))
+                                                   .setExplain(true)
+                                                   .execute()
+                                                   .actionGet();
+                        if(res.getHits().getHits().length == 0 ||
+                           !(res.getHits().getHits()[0].getId()).equals(docNo))
+                        {
+                            client.prepareIndex("ras_dataset", "document", "" + docNo)
+                                  .setSource(builder)
+                                  .execute()
+                                  .actionGet();
+                        }
+                        else
+                        {
+                            // Utils.echo("Update request for document " + docNo);
+                            HashSet<String> inLinkSet = new HashSet<>(
+                                Arrays.asList(res.getHits().getHits()[0].getSource().get("inlinks").toString().split(" ")));
+                            Collections.addAll(inLinkSet, String.valueOf(
+                                new JSONObject(XContentHelper.convertToJson(builder.bytes(), false)).get("inlinks")).split(" "));
+                            StringBuilder inLinks = new StringBuilder();
+                            for(String s : inLinkSet)
+                            {
+                                inLinks.append(s + " ");
+                            }
+                            client.update(new UpdateRequest("ras_dataset", "document", "" + docNo)
+                                          .doc(XContentFactory.jsonBuilder()
+                                               .startObject()
+                                               .field("inlinks", inLinks)
+                                               .endObject())).get();
+                        }
+                        ++id;
+                    }
+                    catch(RemoteTransportException rte)
+                    {
+                        Utils.echo("Update request for an absent document number");
+                        Utils.echo("Creating an index entry instead...");
                         client.prepareIndex("ras_dataset", "document", "" + docNo)
                               .setSource(builder)
                               .execute()
                               .actionGet();
                     }
-                    else
-                    {
-                        HashSet<String> inLinkSet = new HashSet<>(
-                            Arrays.asList(res.getHits().getHits()[0].getSource().get("inlinks").toString().split(" ")));
-                        Collections.addAll(inLinkSet, String.valueOf(
-                            new JSONObject(XContentHelper.convertToJson(builder.bytes(), false)).get("inlinks")).split(" "));
-                        StringBuilder inLinks = new StringBuilder();
-                        for(String s : inLinkSet)
-                        {
-                            inLinks.append(s + " ");
-                        }
-                        client.update(new UpdateRequest("ras_dataset", "document", "" + docNo)
-                                      .doc(XContentFactory.jsonBuilder()
-                                           .startObject()
-                                           .field("inlinks", "http://www.google.com/")
-                                           .endObject())).get();
-                    }
-                    ++id;
                 }
             }
             Utils.echo("Processed the data for " + id + " documents");
