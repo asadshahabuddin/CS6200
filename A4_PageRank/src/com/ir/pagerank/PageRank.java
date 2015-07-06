@@ -46,6 +46,7 @@ public class PageRank
      *            ElasticSearch API client.
      * @throws IOException
      */
+    @SuppressWarnings("unused")
     public void createGraph(Client client)
         throws IOException
     {
@@ -91,36 +92,34 @@ public class PageRank
 
         for(File file : new File(Properties.DIR_GRAPH2).listFiles())
         {
-            if(!file.getName().contains("graph_"))
+            if(file.getName().contains("graph-"))
             {
-                continue;
-            }
-
-            br = new BufferedReader(new FileReader(file));
-            while((line = br.readLine()) != null)
-            {
-                String[] urls = line.split(" ");
-                if(!inlinks.containsKey(urls[0]))
+                br = new BufferedReader(new FileReader(file));
+                while((line = br.readLine()) != null)
                 {
-                    inlinks.put(urls[0], new HashSet<String>());
-                }
-
-                for(int i = 1; i < urls.length; i++)
-                {
-                    if(!outlinks.containsKey(urls[i]))
+                    String[] urls = line.split(" ");
+                    if(!inlinks.containsKey(urls[0]))
                     {
-                        outlinks.put(urls[i], 0);
+                        inlinks.put(urls[0], new HashSet<String>());
                     }
-                    inlinks.get(urls[0]).add(urls[i]);
-                    outlinks.put(urls[i], outlinks.get(urls[i]) + 1);
-                }
+                    for(int i = 1; i < urls.length; i++)
+                    {
+                        if(!outlinks.containsKey(urls[i]))
+                        {
+                            outlinks.put(urls[i], 0);
+                        }
+                        inlinks.get(urls[0]).add(urls[i]);
+                        outlinks.put(urls[i], outlinks.get(urls[i]) + 1);
+                    }
 
-                if(++count % 1000 == 0)
-                {
-                    Utils.echo("Processed " + count + " documents");
+                    /* Output status at regular intervals. */
+                    if(++count % 1000 == 0)
+                    {
+                        Utils.echo("Processed " + count + " documents");
+                    }
                 }
+                br.close();
             }
-            br.close();
         }
 
         /* Purge unnecessary/external links the out-link map. */
@@ -151,6 +150,7 @@ public class PageRank
     /**
      * Populate all the data structures using test data.
      */
+    @SuppressWarnings("unused")
     public void createTestDataSet()
         throws IOException
     {
@@ -205,6 +205,7 @@ public class PageRank
     /**
      * Check if all the nodes are valid in-link keys.
      */
+    @SuppressWarnings("unused")
     public void check()
     {
         for(String k1 : inlinks.keySet())
@@ -243,10 +244,10 @@ public class PageRank
         /* Initial value. */
         for(String key : inlinks.keySet())
         {
-            pr.put(key, 100 / (double) N);
+            pr.put(key, 100000 / (double) N);
         }
 
-        while(iterCount <= 1000)
+        while(iterCount <= 100)
         {
             Utils.echo("Completed iteration " + iterCount);
             HashMap<String, Double> map = new HashMap<>();
@@ -302,24 +303,25 @@ public class PageRank
         boolean status = true;
         for(String node : pr.keySet())
         {
-            if(Math.floor(pr.get(node) * 1000) != Math.floor(map.get(node) * 1000))
+            if(Math.floor(pr.get(node) * 100) != Math.floor(map.get(node) * 100))
             {
                 status = false;
             }
         }
         convCount = status ? (convCount + 1) : 1;
-        return (convCount == 4) ? true : false;
+        return convCount == 4;
     }
 
     /**
      * Output the converged page ranks to console.
      */
+    @SuppressWarnings("unused")
     public void outputMap()
     {
         Utils.cout("\n>PageRank values\n");
         for(Map.Entry<String, Double> entry : pr.entrySet())
         {
-            Utils.echo(entry.getKey() + " - " + entry.getValue() * 100);
+            Utils.echo(entry.getKey() + " - " + entry.getValue());
         }
         Utils.cout("\n");
     }
@@ -370,7 +372,6 @@ public class PageRank
             PageRank pr = new PageRank();
             Utils.cout(">Creating in-link, out-link and sink data structures\n");
             pr.createDataSet();
-            pr.check();
             Utils.cout("\n>Calculating page ranks for all the pages\n");
             if(pr.rank())
             {
