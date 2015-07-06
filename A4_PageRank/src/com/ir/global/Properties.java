@@ -13,7 +13,8 @@ public class Properties
     public static final String INDEX_TYPE   = "document";
 
     /* Directories and files. */
-    public static final String DIR_GRAPH  = "C:/Users/Asad Shahabuddin/Google Drive/Information Retrieval";
+    public static final String DIR_GRAPH1 = "C:/Users/Asad Shahabuddin/Google Drive/Information Retrieval";
+    public static final String DIR_GRAPH2 = "E:/Home/Repository/Java/IdeaProjects/A4_Pagerank";
     public static final String FILE_GRAPH = "graph.txt";
 
     /* Numerical constants. */

@@ -22,8 +22,9 @@ public class PageRank
 {
     private HashMap<String, Double> pr;
     private HashMap<String, HashSet<String>> inlinks;
-    private HashMap<String, HashSet<String>> outlinks;
+    private HashMap<String, Integer> outlinks;
     private HashSet<String> sink;
+    private Queue queue;
     private int convCount;
 
     /**
@@ -35,6 +36,7 @@ public class PageRank
         inlinks   = new HashMap<>();
         outlinks  = new HashMap<>();
         sink      = new HashSet<>();
+        queue     = new Queue();
         convCount = 1;
     }
 
@@ -80,14 +82,14 @@ public class PageRank
      * Populate all the data structures from the (in-links) graph.
      * @throws IOException
      */
-    public void createDataset()
+    public void createDataSet()
         throws IOException
     {
         BufferedReader br;
         String line;
         int count = 0;
 
-        for(File file : new File(Properties.DIR_GRAPH).listFiles())
+        for(File file : new File(Properties.DIR_GRAPH2).listFiles())
         {
             if(!file.getName().contains("graph_"))
             {
@@ -107,10 +109,10 @@ public class PageRank
                 {
                     if(!outlinks.containsKey(urls[i]))
                     {
-                        outlinks.put(urls[i], new HashSet<String>());
+                        outlinks.put(urls[i], 0);
                     }
                     inlinks.get(urls[0]).add(urls[i]);
-                    outlinks.get(urls[i]).add(urls[0]);
+                    outlinks.put(urls[i], outlinks.get(urls[i]) + 1);
                 }
 
                 if(++count % 1000 == 0)
@@ -150,6 +152,7 @@ public class PageRank
      * Populate all the data structures using test data.
      */
     public void createTestDataSet()
+        throws IOException
     {
         /* In-links : BEGIN */
         inlinks.put("A", new HashSet<String>());
@@ -183,33 +186,16 @@ public class PageRank
         /* In-links : END */
 
         /* Out-links : BEGIN */
-        outlinks.put("B", new HashSet<String>());
-        outlinks.get("B").add("C");
-        outlinks.put("C", new HashSet<String>());
-        outlinks.get("C").add("B");
-        outlinks.put("D", new HashSet<String>());
-        outlinks.get("D").add("A");
-        outlinks.get("D").add("B");
-        outlinks.put("E", new HashSet<String>());
-        outlinks.get("E").add("B");
-        outlinks.get("E").add("D");
-        outlinks.get("E").add("F");
-        outlinks.put("F", new HashSet<String>());
-        outlinks.get("F").add("B");
-        outlinks.get("F").add("E");
-        outlinks.put("G", new HashSet<String>());
-        outlinks.get("G").add("B");
-        outlinks.get("G").add("E");
-        outlinks.put("H", new HashSet<String>());
-        outlinks.get("H").add("B");
-        outlinks.get("H").add("E");
-        outlinks.put("I", new HashSet<String>());
-        outlinks.get("I").add("B");
-        outlinks.get("I").add("E");
-        outlinks.put("J", new HashSet<String>());
-        outlinks.get("J").add("E");
-        outlinks.put("K", new HashSet<String>());
-        outlinks.get("K").add("E");
+        outlinks.put("B", 1);
+        outlinks.put("C", 1);
+        outlinks.put("D", 2);
+        outlinks.put("E", 3);
+        outlinks.put("F", 2);
+        outlinks.put("G", 2);
+        outlinks.put("H", 2);
+        outlinks.put("I", 2);
+        outlinks.put("J", 1);
+        outlinks.put("K", 1);
         /* Out-links : END */
 
         /* Sink nodes. */
@@ -217,9 +203,28 @@ public class PageRank
     }
 
     /**
-     * Rank all the pages iteratively.
+     * Check if all the nodes are valid in-link keys.
      */
-    public void rank()
+    public void check()
+    {
+        for(String k1 : inlinks.keySet())
+        {
+            for(String k2 : inlinks.get(k1))
+            {
+                if(!inlinks.containsKey(k2))
+                {
+                    Utils.echo(k2 + " is not an in-link key");
+                }
+            }
+        }
+    }
+
+    /**
+     * Rank all the pages iteratively.
+     * @return
+     *            true if the PageRank calculations converged.
+     */
+    public boolean rank()
     {
         /*
         VOCABULARY:
@@ -241,8 +246,9 @@ public class PageRank
             pr.put(key, 100 / (double) N);
         }
 
-        while(true)
+        while(iterCount <= 1000)
         {
+            Utils.echo("Completed iteration " + iterCount);
             HashMap<String, Double> map = new HashMap<>();
             sinkPR = 0;
 
@@ -260,11 +266,11 @@ public class PageRank
                 */
                 double v = (1 - Properties.LAMBDA + (Properties.LAMBDA * sinkPR)) / (double) N;
                 /* Pages pointing to k1. */
-                for(String k2 : outlinks.keySet())
+                for(String k2 : inlinks.get(k1))
                 {
-                    if(outlinks.get(k2).contains(k1))
+                    if(inlinks.containsKey(k2))
                     {
-                        v += (Properties.LAMBDA * pr.get(k2)) / outlinks.get(k2).size();
+                        v += (Properties.LAMBDA * pr.get(k2)) / outlinks.get(k2);
                     }
                 }
                 map.put(k1, v);
@@ -274,13 +280,14 @@ public class PageRank
             if(hasConverged(map))
             {
                 Utils.echo("PageRank calculations converged after " + (iterCount - 3) + " iterations");
-                output();
-                return;
+                return true;
             }
             pr.clear();
             pr.putAll(map);
             iterCount++;
         }
+
+        return false;
     }
 
     /**
@@ -295,9 +302,9 @@ public class PageRank
         boolean status = true;
         for(String node : pr.keySet())
         {
-            if(Math.floor(pr.get(node) * 100) != Math.floor(map.get(node) * 100))
+            if(Math.floor(pr.get(node) * 1000) != Math.floor(map.get(node) * 1000))
             {
-                status    = false;
+                status = false;
             }
         }
         convCount = status ? (convCount + 1) : 1;
@@ -307,7 +314,7 @@ public class PageRank
     /**
      * Output the converged page ranks to console.
      */
-    public void output()
+    public void outputMap()
     {
         Utils.cout("\n>PageRank values\n");
         for(Map.Entry<String, Double> entry : pr.entrySet())
@@ -315,6 +322,33 @@ public class PageRank
             Utils.echo(entry.getKey() + " - " + entry.getValue() * 100);
         }
         Utils.cout("\n");
+    }
+
+    /**
+     * Populate the queue with nodes and their page ranks.
+     */
+    public void createQueue()
+    {
+        for(String key : pr.keySet())
+        {
+            queue.add(new NodeScorePair(key, pr.get(key)));
+        }
+        queue.reverse();
+    }
+
+    /**
+     * Output the top 500 nodes by the PageRank score.
+     */
+    public void outputQueue()
+    {
+        NodeScorePair nsp;
+        double sum = 0;
+        while((nsp = queue.remove()) != null)
+        {
+            Utils.cout(nsp.getNode() + " has a score of " + nsp.getScore() * 100 + "\n");
+            sum += nsp.getScore();
+        }
+        Utils.cout("\nTotal PR distribution is " + sum + "\n");
     }
 
     /**
@@ -334,11 +368,17 @@ public class PageRank
         try
         {
             PageRank pr = new PageRank();
-            // Client client = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.CLUSTER_NAME).node().client();
-            // pr.createGraph(client);
             Utils.cout(">Creating in-link, out-link and sink data structures\n");
-            pr.createDataset();
-            pr.rank();
+            pr.createDataSet();
+            pr.check();
+            Utils.cout("\n>Calculating page ranks for all the pages\n");
+            if(pr.rank())
+            {
+                Utils.cout("\n>Creating the priority queue\n");
+                pr.createQueue();
+                Utils.cout("\n>Top 500 by PageRank score\n");
+                pr.outputQueue();
+            }
         }
         catch(IOException ioe)
         {
