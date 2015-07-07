@@ -21,23 +21,34 @@ import org.elasticsearch.index.query.QueryBuilders;
 
 public class HITS
 {
-    private HashMap<String, Integer> docLenMap;
-    private HashMap<String, Double> bm25Map;
-    private Queue bm25q;
+    private int convCount;
     private double avgDocLength;
     private BufferedReader br;
     private FileWriter fw;
+    private HashMap<String, Integer> docLenMap;
+    private HashMap<String, Double> bm25Map;
+    private Queue bm25q;
+    private HashMap<Integer, Double> A;
+    private HashMap<Integer, Double> H;
+    private Queue Aq;
+    private Queue Hq;
 
     /**
      * Constructor.
      */
     public HITS()
     {
+        convCount    = 1;
+        avgDocLength = 0;
+        br           = null;
+        fw           = null;
         docLenMap    = new HashMap<>();
         bm25Map      = new HashMap<>();
         bm25q        = new Queue();
-        avgDocLength = 0;
-        br           = null;
+        A            = new HashMap<>();
+        H            = new HashMap<>();
+        Aq           = new Queue();
+        Hq           = new Queue();
     }
 
     /**
@@ -275,6 +286,9 @@ public class HITS
         File file = new File(Properties.FILE_IDX_OBJ);
         if(file.exists())
         {
+            /* Free the memory of data duplication. */
+            baseSet.clear();
+            /* De-serialize the index. */
             ObjectInputStream in = new ObjectInputStream(new FileInputStream(file));
             index = (HashMap<String, Integer>) in.readObject();
             in.close();
@@ -366,6 +380,174 @@ public class HITS
     }
 
     /**
+     * Check if the Hub and Authority scores have converged.
+     * @param index
+     *            The index.
+     * @params newA, oldA
+     *            A map of pages and their authority scores.
+     * @params newH, oldH
+     *            A map of pages and their hub scores.
+     * @return
+     *            true iff the page ranks have converged.
+     */
+    public boolean hasConverged(HashMap<String, Integer> index,
+                                HashMap<Integer, Double> newA,
+                                HashMap<Integer, Double> newH)
+    {
+        boolean status = true;
+        for(String docNo : index.keySet())
+        {
+            int docId = index.get(docNo);
+            if((Math.floor(newA.get(docId) * 10000) != Math.floor(A.get(docId) * 10000)) ||
+               (Math.floor(newH.get(docId) * 10000) != Math.floor(H.get(docId) * 10000)))
+            {
+                status = false;
+                break;
+            }
+        }
+        convCount = status ? (convCount + 1) : 1;
+        return convCount == 4;
+    }
+
+    public boolean hubsAndAuthorities(HashMap<String, Integer> index, HashMap[] m)
+    {
+        HashMap<Integer, HashSet<Integer>> mIn = m[0];
+        HashMap<Integer, HashSet<Integer>> mOut = m[1];
+
+        /* Assign initial authority and hub values to the pages. */
+        for(String docId : index.keySet())
+        {
+            A.put(index.get(docId), 1D);
+            H.put(index.get(docId), 1D);
+        }
+
+        int count = 1;
+        while(count <= 100)
+        {
+            HashMap<Integer, Double> newA = new HashMap<>();
+            HashMap<Integer, Double> newH = new HashMap<>();
+
+            /* Calculate the authority scores. */
+            double N = 0;
+            for(String docNo : index.keySet())
+            {
+                int docId = index.get(docNo);
+                if(mIn.containsKey(docId))
+                {
+                    double auth = 0;
+                    for(Integer inId : mIn.get(docId))
+                    {
+                        auth += H.get(inId);
+                    }
+                    newA.put(docId, auth);
+                    N += Math.pow(auth, 2);
+                }
+                else
+                {
+                    newA.put(docId, 0D);
+                }
+            }
+            N = Math.sqrt(N);
+            for(String docId : index.keySet())
+            {
+                newA.put(index.get(docId), newA.get(index.get(docId)) / N);
+            }
+
+            /* Calculate the hub scores. */
+            N = 0;
+            for(String docNo : index.keySet())
+            {
+                int docId = index.get(docNo);
+                if(mOut.containsKey(docId))
+                {
+                    double hub = 0;
+                    for(Integer outId : mOut.get(docId))
+                    {
+                        hub += newA.get(outId);
+                    }
+                    newH.put(docId, hub);
+                    N += Math.pow(hub, 2);
+                }
+                else
+                {
+                    newH.put(docId, 0D);
+                }
+            }
+            N = Math.sqrt(N);
+            for(String docId : index.keySet())
+            {
+                newH.put(index.get(docId), newH.get(index.get(docId)) / N);
+            }
+
+            /* Test for convergence. */
+            if(hasConverged(index, newA, newH))
+            {
+                Utils.echo("Hub and Authority calculations converged after " +
+                           (count - 3) + " iterations");
+                return true;
+            }
+            /* Clear the old values and copy the new values. */
+            A.clear();
+            H.clear();
+            A.putAll(newA);
+            H.putAll(newH);
+            Utils.echo("Completed iteration " + count++);
+        }
+
+        return false;
+    }
+
+    /**
+     * Populate the queue with nodes and their page ranks.
+     */
+    public void createQueues(HashMap<String, Integer> index)
+    {
+        for(String key : index.keySet())
+        {
+            Aq.add(new NodeScorePair(key, A.get(index.get(key))));
+            Hq.add(new NodeScorePair(key, H.get(index.get(key))));
+        }
+        Aq.reverse();
+        Hq.reverse();
+    }
+
+    /**
+     * Output the top 500 nodes by the PageRank score.
+     */
+    public void writeHubsAndAuthorities()
+        throws IOException
+    {
+        /* Write the top 500 Hubs to the file system. */
+        StringBuilder sb = new StringBuilder();
+        NodeScorePair nsp;
+        double sum = 0;
+        while((nsp = Hq.remove()) != null)
+        {
+            sb.append(nsp.getNode() + "\t" + nsp.getScore() + "\n");
+            sum += Math.pow(nsp.getScore(), 2);
+        }
+
+        Utils.cout("Total Hub score is " + sum + "\n");
+        fw = new FileWriter(Properties.FILE_HUBS);
+        fw.write(sb.toString());
+        fw.close();
+
+        /* Write the top 500 Authorities to the file system. */
+        sb = new StringBuilder();
+        sum = 0;
+        while((nsp = Aq.remove()) != null)
+        {
+            sb.append(nsp.getNode() + "\t" + nsp.getScore() + "\n");
+            sum += Math.pow(nsp.getScore(), 2);
+        }
+
+        Utils.cout("Total Authority score is " + sum + "\n");
+        fw = new FileWriter(Properties.FILE_AUTHORITIES);
+        fw.write(sb.toString());
+        fw.close();
+    }
+
+    /**
      * Main method for unit testing.
      * @param args
      *            Program arguments.
@@ -380,31 +562,45 @@ public class HITS
         Utils.cout("\n");
 
         HITS h = new HITS();
-        Node node = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.CLUSTER_NAME).node();
-        Client client = node.client();
+        Node node = null;
+        Client client = null;
+        // Node node = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.CLUSTER_NAME).node();
+        // Client client = node.client();
 
         try
         {
             /* Create the root set. */
+            /*
             Utils.cout("\n>Creating the root set\n");
             HashSet<String> set = h.createRootSet(client, Properties.QUERY_TOPICAL);
             Utils.echo("Size of the root set is " + set.size());
+            */
 
             /* Create the base set. */
+            /*
             Utils.cout("\n>Creating the base set by expanding roots\n");
             set = h.createBaseSet(client, set);
             Utils.echo("Size of the base set is " + set.size());
+            */
 
             /* Create an index for the base set. */
-            HashMap<String, Integer> index = h.createIndex(set);
+            Utils.cout("\n>Creating the index\n");
+            HashMap<String, Integer> index = h.createIndex(new HashSet<String>());
+            Utils.echo("Size of the index is " + index.size());
 
             /* Create an adjacency matrix for the base set. */
             Utils.cout("\n>Creating the adjacency matrix\n");
             HashMap[] adjM = h.createAdjacencyMatrix(client, index, index.size());
-            node.close();
+            // node.close();
 
             /* Calculate the Hub and Authority scores. */
-            // TODO
+            Utils.cout("\n>Calculating Hub and Authority scores\n");
+            h.hubsAndAuthorities(index, adjM);
+
+            /* Extract the top 500 Hubs and Authorities. */
+            Utils.cout("\n>Extracting the top 500 Hubs and Authorities\n");
+            h.createQueues(index);
+            h.writeHubsAndAuthorities();
         }
         catch(IOException ioe)
         {

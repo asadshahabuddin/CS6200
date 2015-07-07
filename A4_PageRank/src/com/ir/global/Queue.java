@@ -55,7 +55,7 @@ public class Queue
             return false;
         }
         queue.offer(nsp);
-        if(queue.size() == 1001)
+        if(queue.size() == 501)
         {
             queue.remove();
         }
