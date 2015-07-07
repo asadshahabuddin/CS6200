@@ -221,6 +221,28 @@ public class PageRank
     }
 
     /**
+     * Check if the PageRank calculations have converged.
+     * @param map
+     *           A map of nodes and their page ranks.
+     * @return
+     *           true iff the page ranks have converged.
+     */
+    public boolean hasConverged(HashMap<String, Double> map)
+    {
+        boolean status = true;
+        for(String node : pr.keySet())
+        {
+            if(Math.floor(pr.get(node) * 100) != Math.floor(map.get(node) * 100))
+            {
+                status = false;
+                break;
+            }
+        }
+        convCount = status ? (convCount + 1) : 1;
+        return convCount == 4;
+    }
+
+    /**
      * Rank all the pages iteratively.
      * @return
      *            true if the PageRank calculations converged.
@@ -289,27 +311,6 @@ public class PageRank
         }
 
         return false;
-    }
-
-    /**
-     * Check if the PageRank calculations have converged.
-     * @param map
-     *           A map of nodes and their page ranks.
-     * @return
-     *           true iff the page ranks have converged.
-     */
-    public boolean hasConverged(HashMap<String, Double> map)
-    {
-        boolean status = true;
-        for(String node : pr.keySet())
-        {
-            if(Math.floor(pr.get(node) * 100) != Math.floor(map.get(node) * 100))
-            {
-                status = false;
-            }
-        }
-        convCount = status ? (convCount + 1) : 1;
-        return convCount == 4;
     }
 
     /**
