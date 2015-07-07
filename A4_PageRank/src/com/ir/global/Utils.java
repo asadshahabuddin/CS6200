@@ -7,12 +7,15 @@ import java.util.HashMap;
 import java.util.Iterator;
 import org.json.JSONObject;
 import org.json.JSONException;
+import org.elasticsearch.node.Node;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.node.NodeBuilder;
 import org.elasticsearch.common.xcontent.*;
 import java.util.concurrent.ExecutionException;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.termvector.TermVectorResponse;
 
@@ -248,7 +251,7 @@ public class Utils
     }
 
     /**
-     * Query the term frequency.
+     * Query the term frequency in the entire corpus.
      * @param client
      *            The Elasticsearch client object.
      * @param qb
@@ -258,6 +261,8 @@ public class Utils
      * @param type
      *            The index type.
      * @return
+     *            A map of Document IDs containing the term and the corresponding
+     *            frequencies.
      */
     public static HashMap<String, Integer> queryTF(Client client, QueryBuilder qb,
                                                    String index , String type)
@@ -267,7 +272,7 @@ public class Utils
                                     .setScroll(new TimeValue(6000))
                                     .setQuery(qb)
                                     .setExplain(true)
-                                    .setSize(100)
+                                    .setSize(50)
                                     .execute()
                                     .actionGet();
 
@@ -281,9 +286,8 @@ public class Utils
         {
             for(SearchHit hit : resp.getHits().getHits())
             {
-                String docNo = (String) hit.getSource().get("docno");
-                int tf =  (int) hit.getExplanation().getDetails()[0].getDetails()[0].getDetails()[0].getValue();
-                res.put(docNo, tf);
+                res.put((String) hit.getSource().get("docno"),
+                        (int) hit.getExplanation().getDetails()[0].getDetails()[0].getDetails()[0].getValue());
             }
             resp = client.prepareSearchScroll(resp.getScrollId()).setScroll(
                 new TimeValue(6000)).execute().actionGet();
@@ -294,6 +298,54 @@ public class Utils
         }
 
         return res;
+    }
+
+    /**
+     * Query Elasticsearch for a field in the specified document.
+     * @param client
+     *            The Elasticsearch client object.
+     * @param docNo
+     *            The Document ID.
+     * @param attr
+     *            The attribute whose value is to be queried.
+     * @return
+     *            The value for the specified field and document.
+     */
+    public static String queryAttr(Client client, String docNo, String attr)
+    {
+        return client.prepareSearch(Properties.INDEX_NAME)
+                     .setTypes(Properties.INDEX_TYPE)
+                     .setQuery(QueryBuilders.matchQuery("docno", docNo))
+                     .setExplain(true)
+                     .execute()
+                     .actionGet()
+                     .getHits()
+                     .getHits()[0]
+                     .getSource()
+                     .get(attr)
+                     .toString();
+    }
+
+    /**
+     * Main method for unit testing.
+     * @param args
+     *            Program arguments.
+     */
+    public static void main(String[] args)
+    {
+        Node node = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.CLUSTER_NAME).node();
+        Client client = node.client();
+        Utils.cout(">Out-links\n");
+        for(String s : queryAttr(client, "http://en.wikipedia.org/wiki/Retina_Display", "outlinks").split(" "))
+        {
+            Utils.cout(s + "\n");
+        }
+        Utils.cout("\n>In-links\n");
+        for(String s : queryAttr(client, "http://en.wikipedia.org/wiki/Retina_Display", "inlinks").split(" "))
+        {
+            Utils.cout(s + "\n");
+        }
+        node.close();
     }
 }
 /* End of Utils.java */

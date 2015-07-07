@@ -13,12 +13,16 @@ public class Properties
     public static final String INDEX_TYPE   = "document";
 
     /* Directories and files. */
-    public static final String DIR_GRAPH1   = "C:/Users/Asad Shahabuddin/Google Drive/Information Retrieval";
-    public static final String DIR_GRAPH2   = "E:/Home/Repository/Java/IdeaProjects/A4_Pagerank";
-    public static final String FILE_GRAPH   = "graph.txt";
-    public static final String FILE_DOCLIST = "doclist.txt";
-    public static final String FILE_DOCLEN  = "doclen.txt";
-    public static final String FILE_BM25    = "bm25.txt";
+    public static final String DIR_GRAPH1     = "C:/Users/Asad Shahabuddin/Google Drive/Information Retrieval";
+    public static final String DIR_GRAPH2     = "E:/Home/Repository/Java/IdeaProjects/A4_Pagerank";
+    public static final String FILE_GRAPH     = "graph.txt";
+    public static final String FILE_DOCLIST   = "doclist.txt";
+    public static final String FILE_DOCLEN    = "doclen.txt";
+    public static final String FILE_BM25      = "bm25.txt";
+    public static final String FILE_BASESET   = "baseset.txt";
+    public static final String FILE_IDX_OBJ   = "index.map";
+    public static final String FILE_AMIN_OBJ  = "adjacency-matrix-in.map";
+    public static final String FILE_AMOUT_OBJ = "adjacency-matrix-out.map";
 
     /* Numerical constants. */
     public static final int COUNT_DOC = 45608;
@@ -28,6 +32,6 @@ public class Properties
     public static final double B      = 0.75;
 
     /* String constants. */
-    public static final String QUERY_TOPICAL = "1504 APPLE TECHNOLOGY";
+    public static final String QUERY_TOPICAL = "APPLE TECHNOLOGY";
 }
 /* End of Properties.java */
