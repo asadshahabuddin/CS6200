@@ -38,7 +38,7 @@ public class Queue
      */
     public Queue()
     {
-        queue = new PriorityQueue<NodeScorePair>(500, new QueueAsc());
+        queue = new PriorityQueue<>(500, new QueueAsc());
     }
 
     /**
@@ -85,31 +85,6 @@ public class Queue
             new PriorityQueue<NodeScorePair>(queue.size(), new QueueDesc());
         revQueue.addAll(queue);
         queue = revQueue;
-    }
-
-    /**
-     * Main method for unit testing.
-     * @param args
-     *            Program arguments.
-     */
-    public static void main(String[] args)
-    {
-        Queue q = new Queue();
-
-        /* Add objects to the queue and reverse it at the end. */
-        q.add(new NodeScorePair("A", 1));
-        q.add(new NodeScorePair("B", 4));
-        q.add(new NodeScorePair("C", 2));
-        q.add(new NodeScorePair("D", 1));
-        q.add(new NodeScorePair("E", 3));
-        q.reverse();
-
-        /* Poll the queue. */
-        NodeScorePair nsp;
-        while((nsp = q.remove()) != null)
-        {
-            Utils.cout(nsp.getNode() + " has a score of " + nsp.getScore() + "\n");
-        }
     }
 }
 /* End of Queue.java */

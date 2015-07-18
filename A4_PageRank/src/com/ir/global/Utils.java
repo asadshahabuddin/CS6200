@@ -7,10 +7,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import org.json.JSONObject;
 import org.json.JSONException;
-import org.elasticsearch.node.Node;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.node.NodeBuilder;
 import org.elasticsearch.common.xcontent.*;
 import java.util.concurrent.ExecutionException;
 import org.elasticsearch.common.unit.TimeValue;
@@ -88,9 +86,9 @@ public class Utils
     }
 
     /**
-     * Write a list of all Document IDs to the file system.
+     * Output a list of all document IDs to the file system.
      * @param dir
-     *            The directory containing all the in-link graph files.
+     *            The directory containing in-link graphs.
      * @throws IOException
      */
     public static void createDocList(String dir)
@@ -129,9 +127,9 @@ public class Utils
     }
 
     /**
-     * Create a set of all Document IDs.
+     * Create a set of all document IDs.
      * @return
-     *            The set of all Document IDs.
+     *            The set of all document IDs.
      * @throws IOException
      */
     public static HashSet<String> createDocSet()
@@ -154,26 +152,23 @@ public class Utils
      * @param client
      *            The Elasticsearch client object.
      * @param docId
-     *            The Document ID.
+     *            The document ID.
      * @return
      *            The document length.
-     * @throws IOException
-     * @throws JSONException
-     * @throws InterruptedException
-     * @throws ExecutionException
+     * @throws IOException, JSONException, InterruptedException, ExecutionException
      */
     public static int calcDocLength(Client client, String docId)
-            throws IOException, JSONException, InterruptedException, ExecutionException
+        throws IOException, JSONException, InterruptedException, ExecutionException
     {
         int len = 0;
 
         /* Execute the query and get the resultant builder. */
         TermVectorResponse res = client.prepareTermVector()
-                .setIndex(Properties.INDEX_NAME)
-                .setType(Properties.INDEX_TYPE)
-                .setId(docId)
-                .execute()
-                .actionGet();
+                                       .setIndex(Properties.INDEX_NAME)
+                                       .setType(Properties.INDEX_TYPE)
+                                       .setId(docId)
+                                       .execute()
+                                       .actionGet();
         XContentBuilder builder = XContentFactory.contentBuilder(XContentType.JSON).prettyPrint();
         builder.startObject();
         res.toXContent(builder, ToXContent.EMPTY_PARAMS);
@@ -183,9 +178,9 @@ public class Utils
         {
             /* Get the term vector response as a JSON object. */
             JSONObject jsonObj = new JSONObject(XContentHelper.convertToJson(builder.bytes(), false))
-                    .getJSONObject("term_vectors")
-                    .getJSONObject("text")
-                    .getJSONObject("terms");
+                                 .getJSONObject("term_vectors")
+                                 .getJSONObject("text")
+                                 .getJSONObject("terms");
             Iterator<?> keys = jsonObj.keys();
 
             /* Iterate over all terms and add their respective frequencies. */
@@ -203,9 +198,9 @@ public class Utils
     }
 
     /**
-     * Write a list of all Document IDs and the corresponding document lengths
-     * to the file system.
-     * @throws IOException
+     * Output a list of all document IDs and the corresponding document
+     * lengths to the file system.
+     * @throws IOException, JSONException, InterruptedException, ExecutionException
      */
     public static void createDocLenList(Client client)
         throws IOException, JSONException, InterruptedException, ExecutionException
@@ -230,10 +225,10 @@ public class Utils
     }
 
     /**
-     * Create a map of all Document IDs and the corresponding document lengths.
+     * Create a map of all document IDs and the corresponding document lengths.
      * @return
-     *            The map of all Document IDs and the corresponding document
-     *            lengths.
+     *            A map of all document IDs and corresponding document lengths.
+     * @throws IOException
      */
     public static HashMap<String, Integer> createDocLenMap()
         throws IOException
@@ -251,18 +246,17 @@ public class Utils
     }
 
     /**
-     * Query the term frequency in the entire corpus.
+     * Query frequency of the specified term in the entire corpus.
      * @param client
      *            The Elasticsearch client object.
      * @param qb
-     *            The QueryBuilder object.
+     *            The query.
      * @param index
      *            The index name.
      * @param type
-     *            The index type.
+     *            The index data type.
      * @return
-     *            A map of Document IDs containing the term and the corresponding
-     *            frequencies.
+     *            A map of document IDs and frequencies for the specified term.
      */
     public static HashMap<String, Integer> queryTF(Client client, QueryBuilder qb,
                                                    String index , String type)
@@ -301,15 +295,15 @@ public class Utils
     }
 
     /**
-     * Query Elasticsearch for a field in the specified document.
+     * Query Elasticsearch for an attribute in the specified document.
      * @param client
      *            The Elasticsearch client object.
      * @param docNo
-     *            The Document ID.
+     *            The document ID.
      * @param attr
      *            The attribute whose value is to be queried.
      * @return
-     *            The value for the specified field and document.
+     *            The value of this attribute.
      */
     public static String queryAttr(Client client, String docNo, String attr)
     {
@@ -324,28 +318,6 @@ public class Utils
                      .getSource()
                      .get(attr)
                      .toString();
-    }
-
-    /**
-     * Main method for unit testing.
-     * @param args
-     *            Program arguments.
-     */
-    public static void main(String[] args)
-    {
-        Node node = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.CLUSTER_NAME).node();
-        Client client = node.client();
-        Utils.cout(">Out-links\n");
-        for(String s : queryAttr(client, "http://en.wikipedia.org/wiki/Retina_Display", "outlinks").split(" "))
-        {
-            Utils.cout(s + "\n");
-        }
-        Utils.cout("\n>In-links\n");
-        for(String s : queryAttr(client, "http://en.wikipedia.org/wiki/Retina_Display", "inlinks").split(" "))
-        {
-            Utils.cout(s + "\n");
-        }
-        node.close();
     }
 }
 /* End of Utils.java */

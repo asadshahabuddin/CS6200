@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.HashMap;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.search.SearchHit;
-// import org.elasticsearch.node.NodeBuilder;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.action.search.SearchResponse;
@@ -43,7 +42,7 @@ public class PageRank
     /**
      * Create a connectivity (in-links) graph from the unified index.
      * @param client
-     *            ElasticSearch API client.
+     *            The ElasticSearch client object.
      * @throws IOException
      */
     @SuppressWarnings("unused")
@@ -80,7 +79,7 @@ public class PageRank
     }
 
     /**
-     * Populate all the data structures from the (in-links) graph.
+     * Populate all data structures from the (in-links) graph.
      * @throws IOException
      */
     public void createDataSet()
@@ -148,7 +147,8 @@ public class PageRank
     }
 
     /**
-     * Populate all the data structures using test data.
+     * Populate all data structures using test data.
+     * @throws IOException
      */
     @SuppressWarnings("unused")
     public void createTestDataSet()
@@ -221,18 +221,18 @@ public class PageRank
     }
 
     /**
-     * Check if the PageRank calculations have converged.
+     * Check if the scores have converged.
      * @param map
      *           A map of nodes and their page ranks.
      * @return
-     *           true iff the page ranks have converged.
+     *           true iff the scores have converged.
      */
     public boolean hasConverged(HashMap<String, Double> map)
     {
         boolean status = true;
         for(String node : pr.keySet())
         {
-            if(Math.floor(pr.get(node) * 100) != Math.floor(map.get(node) * 100))
+            if(Math.floor(pr.get(node) * 100000) != Math.floor(map.get(node) * 100000))
             {
                 status = false;
                 break;
@@ -245,7 +245,7 @@ public class PageRank
     /**
      * Rank all the pages iteratively.
      * @return
-     *            true if the PageRank calculations converged.
+     *            true iff the scores converge.
      */
     public boolean rank()
     {
@@ -266,7 +266,7 @@ public class PageRank
         /* Initial value. */
         for(String key : inlinks.keySet())
         {
-            pr.put(key, 100000 / (double) N);
+            pr.put(key, 1 / (double) N);
         }
 
         while(iterCount <= 100)
@@ -340,7 +340,7 @@ public class PageRank
     }
 
     /**
-     * Output the top 500 nodes by the PageRank score.
+     * Output the top 500 nodes by PageRank score.
      */
     public void outputQueue()
     {

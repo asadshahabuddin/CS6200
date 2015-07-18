@@ -71,19 +71,7 @@ public class HITS
     }
 
     /**
-     * Reset the data structure(s).
-     */
-    public void reset()
-    {
-        for(String key : docLenMap.keySet())
-        {
-            bm25Map.put(key, 0D);
-        }
-    }
-
-    /**
-     * Add the first 1000 entries by score from the Okapi BM25 map to its
-     * queue in descending order.
+     * Add the first 1000 entries by score to a priority queue.
      */
     public void sortAndFilterMap()
     {
@@ -96,7 +84,7 @@ public class HITS
     }
 
     /**
-     * Write the content of Okapi BM25 queue to the file system.
+     * Output the queue to the file system.
      * @throws IOException
      */
     public HashSet<String> writeQueue(String q)
@@ -108,8 +96,10 @@ public class HITS
         NodeScorePair nsp;
         int rank = 0;
 
-        /* Output the Okapi BM25 results to the file system and populate the set
-        of root nodes. */
+        /*
+        (1) Populate a set of root nodes.
+        (2) Output results to the file system.
+        */
         while((nsp = bm25q.remove()) != null)
         {
             set.add(nsp.getNode());
@@ -277,6 +267,7 @@ public class HITS
      *            The base set.
      * @return
      *            The equivalent index.
+     * @throws IOException, ClassNotFoundException
      */
     public HashMap<String, Integer> createIndex(HashSet<String> baseSet)
         throws IOException, ClassNotFoundException
@@ -316,12 +307,11 @@ public class HITS
      *            The Elasticsearch client object.
      * @param index
      *            An index of the (former) base set.
-     * @param n
-     *            Size of the index.
      * @return
      *            The equivalent adjacency matrix.
+     * @throws IOException, ClassNotFoundException
      */
-    public HashMap[] createAdjacencyMatrix(Client client, HashMap<String, Integer> index, int n)
+    public HashMap[] createAdjacencyMatrix(Client client, HashMap<String, Integer> index)
         throws IOException, ClassNotFoundException
     {
         /* If the adjacency matrix already exists, read it from the file system. */
@@ -380,15 +370,15 @@ public class HITS
     }
 
     /**
-     * Check if the Hub and Authority scores have converged.
+     * Check if the hub and authority scores have converged.
      * @param index
      *            The index.
-     * @params newA, oldA
+     * @params newA
      *            A map of pages and their authority scores.
-     * @params newH, oldH
+     * @params newH
      *            A map of pages and their hub scores.
      * @return
-     *            true iff the page ranks have converged.
+     *            true iff the scores have converged.
      */
     public boolean hasConverged(HashMap<String, Integer> index,
                                 HashMap<Integer, Double> newA,
@@ -409,6 +399,15 @@ public class HITS
         return convCount == 4;
     }
 
+    /**
+     * Calculate the hub and authority scores.
+     * @param index
+     *            The index.
+     * @param m
+     *            The adjacency matrix data structure.
+     * @return
+     *            true iff the scores converge.
+     */
     public boolean hubsAndAuthorities(HashMap<String, Integer> index, HashMap[] m)
     {
         HashMap<Integer, HashSet<Integer>> mIn = m[0];
@@ -499,6 +498,8 @@ public class HITS
 
     /**
      * Populate the queue with nodes and their page ranks.
+     * @param index
+     *            The index.
      */
     public void createQueues(HashMap<String, Integer> index)
     {
@@ -512,12 +513,13 @@ public class HITS
     }
 
     /**
-     * Output the top 500 nodes by the PageRank score.
+     * Output the top 500 nodes by PageRank scores.
+     * @throws IOException
      */
     public void writeHubsAndAuthorities()
         throws IOException
     {
-        /* Write the top 500 Hubs to the file system. */
+        /* Output the top 500 hubs to the file system. */
         StringBuilder sb = new StringBuilder();
         NodeScorePair nsp;
         double sum = 0;
@@ -532,7 +534,7 @@ public class HITS
         fw.write(sb.toString());
         fw.close();
 
-        /* Write the top 500 Authorities to the file system. */
+        /* Output the top 500 authorities to the file system. */
         sb = new StringBuilder();
         sum = 0;
         while((nsp = Aq.remove()) != null)
@@ -562,42 +564,36 @@ public class HITS
         Utils.cout("\n");
 
         HITS h = new HITS();
-        Node node = null;
-        Client client = null;
-        // Node node = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.CLUSTER_NAME).node();
-        // Client client = node.client();
+        Node node = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.CLUSTER_NAME).node();
+        Client client = node.client();
 
         try
         {
             /* Create the root set. */
-            /*
             Utils.cout("\n>Creating the root set\n");
             HashSet<String> set = h.createRootSet(client, Properties.QUERY_TOPICAL);
             Utils.echo("Size of the root set is " + set.size());
-            */
 
             /* Create the base set. */
-            /*
             Utils.cout("\n>Creating the base set by expanding roots\n");
             set = h.createBaseSet(client, set);
             Utils.echo("Size of the base set is " + set.size());
-            */
 
             /* Create an index for the base set. */
             Utils.cout("\n>Creating the index\n");
             HashMap<String, Integer> index = h.createIndex(new HashSet<String>());
             Utils.echo("Size of the index is " + index.size());
 
-            /* Create an adjacency matrix for the base set. */
+            /* Create an (sparse) adjacency matrix for the base set. */
             Utils.cout("\n>Creating the adjacency matrix\n");
-            HashMap[] adjM = h.createAdjacencyMatrix(client, index, index.size());
-            // node.close();
+            HashMap[] adjM = h.createAdjacencyMatrix(client, index);
+            node.close();
 
-            /* Calculate the Hub and Authority scores. */
+            /* Calculate the hub and authority scores. */
             Utils.cout("\n>Calculating Hub and Authority scores\n");
             h.hubsAndAuthorities(index, adjM);
 
-            /* Extract the top 500 Hubs and Authorities. */
+            /* Extract the top 500 hubs and authorities. */
             Utils.cout("\n>Extracting the top 500 Hubs and Authorities\n");
             h.createQueues(index);
             h.writeHubsAndAuthorities();
