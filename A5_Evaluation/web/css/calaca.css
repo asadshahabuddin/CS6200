@@ -1,0 +1,224 @@
+/*
+    Editor   : Asad Shahabuddin
+    Created  : Jul 18, 2015
+    Reference: Calaca - Search UI for Elasticsearch.
+               https://github.com/romansanchez/Calaca
+               http://romansanchez.me
+               @rooomansanchez
+*/
+
+/* Colors 
+Indian Red: #ed4877
+Crimson: #d62256 
+Whitesmoke: #ecf0f1
+*/
+
+body
+{
+    font-family: "Arial";
+}
+
+/* Header */
+.jumbotron
+{
+    background-color: #F2F2F2;
+    height: 280px;
+    width: 100%;
+}
+
+.title
+{
+    color: #424242;
+    font-size: 50px;
+    padding-top: 70px;
+    text-align: center;
+}
+
+.search-box-container
+{
+    border-radius: 5px;
+    height: 69px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 60px;
+    width: 860px;
+}
+
+.search-box
+{
+    background-color: #fff;
+    border: 1px solid #819FF7;
+    font-size: 16px;
+    height: 60%;
+    outline: 0;
+    padding-left: 20px;
+    padding-right: 20px;
+    width: 812px;
+}
+
+/* Search Box Placeholder text */
+::-webkit-input-placeholder
+{
+    color: #ecf0f1;
+}
+:-moz-placeholder
+{
+    color: #ecf0f1;
+}
+::-moz-placeholder
+{
+    color: #ecf0f1;
+}
+:-ms-input-placeholder
+{
+    color: #ecf0f1;  
+}
+/* Header */
+
+/* Results */
+.results-container
+{
+    height: 100%;
+    padding-bottom: 30px;
+    padding-top: 30px;
+    width: 100%;
+}
+
+.no-results
+{
+    color: #A4A4A4;
+    font-size: 40px;
+    padding: 10px;
+    text-align: center;
+}
+
+.results-info
+{
+    color: #424242;
+    font-size: 14px;
+    margin-left: auto;
+    margin-right: auto;
+    height: 30px;
+    width: 860px;
+}
+
+#response-details
+{
+    float: left;
+}
+
+#pagination-details
+{
+    float: right;
+}
+
+.results
+{
+    background-color: #fff;
+    margin-left: auto;
+    margin-right: auto;
+    width: 860px;
+}
+
+.pagination-controls
+{
+    height: 30px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+    width: 860px;
+}
+
+.pager
+{
+    background-color: #2E64FE;
+    border: none;
+    color: #fff;
+    height: 30px;
+    margin: 5px;
+    width: 75px;
+}
+
+.pager:hover
+{
+    background-color: #0040FF;
+    cursor: pointer;
+}
+
+.pager:focus
+{
+    outline:0;
+}
+/* Results */
+
+/* Result */
+.result
+{
+    margin-bottom: 10px;
+    padding: 10px;
+}
+
+.result h2
+{
+    font-size: 20px;
+}
+
+.result-title
+{
+    color: blue;
+}
+
+.result-title:not(:hover)
+{
+    text-decoration: none;
+}
+
+.result-url
+{
+    color: #088A08;
+    font-size: 14px;
+}
+
+.result-desc
+{
+    color: #585858;
+    font-size: 14px;
+    margin-top: 3px;
+}
+/* Result */
+
+/* ng-repeat animation */
+.result.ng-enter, 
+.result.ng-leave, 
+.result.ng-move
+{
+    position:relative;
+    transition: .5s linear all;
+    -webkit-transition: .5s linear all;
+}
+
+.result.ng-enter
+{
+    left:-10px;
+    opacity:0;
+}
+
+.result.ng-enter.ng-enter-active
+{
+    left:0;
+    opacity:1;
+}
+
+.result.ng-leave
+{
+    left:0;
+    opacity:1;
+}
+
+.result.ng-leave.ng-leave-active
+{
+    left:-10px;
+    opacity:0;
+}
+/* ng-repeat animation */
+/* End of calaca.css */
