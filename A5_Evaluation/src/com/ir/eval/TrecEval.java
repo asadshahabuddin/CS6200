@@ -16,6 +16,17 @@ import java.text.DecimalFormat;
 
 public class TrecEval
 {
+    /**
+     * Output statistics to the console.
+     * @param qid
+     * @param ret
+     * @param rel
+     * @param relRet
+     * @param apar
+     * @param map
+     * @param apac
+     * @param rp
+     */
     public void output(int qid, int ret, int rel, int relRet,
                        double[] apar, double map, double[] apac, double rp)
     {
@@ -53,6 +64,12 @@ public class TrecEval
         Utils.cout("    Exact:        " + new DecimalFormat("#0.0000").format(rp) + "\n");
     }
 
+    /**
+     * Information Retrieval evaluation function.
+     * @param args
+     *            Program arguments.
+     * @throws IOException
+     */
     public void evaluate(String[] args)
         throws IOException
     {

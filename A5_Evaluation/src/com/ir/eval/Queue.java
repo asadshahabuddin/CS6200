@@ -1,7 +1,6 @@
 package com.ir.eval;
 
 /* Import list */
-import com.ir.global.Utils;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
@@ -17,7 +16,7 @@ public class Queue
     /**
      * Comparator class for the priority queue.
      */
-    static class NSPQComparator implements Comparator<NodeScorePair>
+    static class NSPComparator implements Comparator<NodeScorePair>
     {
         @Override
         public int compare(NodeScorePair nsp1, NodeScorePair nsp2)
@@ -36,7 +35,7 @@ public class Queue
      */
     public Queue()
     {
-        queue = new PriorityQueue<NodeScorePair>(1000, new NSPQComparator());
+        queue = new PriorityQueue<>(1000, new NSPComparator());
     }
 
     /**
@@ -67,30 +66,6 @@ public class Queue
             return null;
         }
         return queue.remove();
-    }
-
-    /**
-     * Main method for unit testing.
-     * @param args
-     *            Program arguments.
-     */
-    public static void main(String[] args)
-    {
-        Queue q = new Queue();
-
-        /* Add objects to the queue and reverse it at the end. */
-        q.add(new NodeScorePair("AP890220-011", 4));
-        q.add(new NodeScorePair("AP890220-015", 1));
-        q.add(new NodeScorePair("AP890220-012", 2));
-        q.add(new NodeScorePair("AP890220-014", 1));
-        q.add(new NodeScorePair("AP890220-013", 3));
-
-        /* Poll the queue. */
-        NodeScorePair nsp;
-        while((nsp = q.remove()) != null)
-        {
-            Utils.cout(nsp.getNode() + " has a score of " + nsp.getScore() + "\n");
-        }
     }
 }
 /* End of Queue.java */
