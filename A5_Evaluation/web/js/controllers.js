@@ -14,16 +14,40 @@ Calaca.controller('calacaCtrl', ['calacaService', '$scope', '$location', functio
 {
     /* Constant(s). */
     SHORT_DESC_LEN = 512;
+    ASSESSOR_ID    = "Asad_Shahabuddin";
 
-    /* Init empty array. */
+    /* Scope variables. */
     $scope.results = [];
-
-    /* Init offset. */
     $scope.offset = 0;
+    $scope.evalCount = 0;
 
+    /* Global variables. */
+    var relevance = {};
     var paginationTriggered;
     var maxResultsSize = CALACA_CONFIGS.size;
     var searchTimeout;
+
+    /*
+    Download a file.
+    Note: HTML5 ready browsers only.
+    */
+    var download = function(fileName, text)
+    {
+        var pom = document.createElement("a");
+        pom.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(text));
+        pom.setAttribute("download", fileName);
+
+        if(document.createEvent)
+        {
+            var event = document.createEvent("MouseEvents");
+            event.initEvent("click", true, true);
+            pom.dispatchEvent(event);
+        }
+        else
+        {
+            pom.click();
+        }
+    };
 
     $scope.delayedSearch = function(mode)
     {
@@ -91,16 +115,60 @@ Calaca.controller('calacaCtrl', ['calacaService', '$scope', '$location', functio
         return paginationTriggered ? true : false;
     };
 
-    /* Clip text to 512 characters. */
-    $scope.abstract = function(res)
+    /* Filter the result's title. */
+    $scope.filter = function(obj)
     {
-        if(typeof res.text == "undefined")
+        var res = obj.title;
+        if(typeof res == "undefined")
+        {
+            res = obj.docno;
+        }
+        else if(res.charAt(0) == '>')
+        {
+            res = res.substring(1, res.length);
+        }
+        return res.replace(/\?+/g, "(...)");
+    };
+
+    /* Clip text to 512 characters. */
+    $scope.abstract = function(obj)
+    {
+        if(typeof obj.text == "undefined")
         {
             return "";
         }
-        var len = (res.text.length < SHORT_DESC_LEN) ? res.text.length : SHORT_DESC_LEN;
+        var len = (obj.text.length < SHORT_DESC_LEN) ? obj.text.length : SHORT_DESC_LEN;
         var suffix = len < SHORT_DESC_LEN ? "" : "...";
-        return res.text.substring(0, len) + suffix;
+        return obj.text.substring(0, len) + suffix;
+    };
+
+    /* Update the relevance score for the specified key. */
+    $scope.updateRelevance = function(key, val)
+    {
+        if(!relevance.hasOwnProperty(key.docno))
+        {
+            $scope.evalCount++;
+        }
+        relevance[key.docno] = val;
+    };
+
+    /* Output the relevance scores to the file system. */
+    $scope.write = function(qid)
+    {
+        if(typeof qid == "undefined" || qid.length == 0)
+        {
+            alert("Query ID cannot be blank.")
+        }
+        else
+        {
+            var text = "";
+            for(var key in relevance)
+            {
+                text += qid + " " + ASSESSOR_ID + " " + key + " " + relevance[key] + "\n";
+            }
+            console.log("%c" + text, "font-family: Courier New;");
+            download("qrels-" + qid + ".txt", text);
+        }
     };
 }]);
 /* End of controllers.js */

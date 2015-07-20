@@ -2,12 +2,15 @@ package com.ir.eval;
 
 /* Import list */
 import java.io.File;
+import java.util.Arrays;
 import java.util.TreeMap;
 import java.util.HashMap;
 import com.ir.global.Utils;
 import java.io.IOException;
 import java.io.FileInputStream;
 import java.text.DecimalFormat;
+import com.ir.global.Properties;
+import org.elasticsearch.common.lang3.ArrayUtils;
 
 /**
  * Author : Asad Shahabuddin
@@ -27,8 +30,11 @@ public class TrecEval
      * @param apac
      * @param rp
      */
-    public void output(int qid, int ret, int rel, int relRet,
-                       double[] apar, double map, double[] apac, double rp)
+    public void output(int qid, int ret,
+                       int rel, int relRet,
+                       double[] apar, double map,
+                       double[] apac, double rp,
+                       double[] apaf, double ndcg)
     {
         Utils.cout("\n");
         Utils.cout("Queryid (Num):    " + qid + "\n");
@@ -62,6 +68,14 @@ public class TrecEval
         Utils.cout("  At 1000 docs:   " + new DecimalFormat("#0.0000").format(apac[8]) + "\n");
         Utils.cout("R-Precision (precision after R (= num_rel for a query) docs retrieved:\n");
         Utils.cout("    Exact:        " + new DecimalFormat("#0.0000").format(rp) + "\n");
+        Utils.cout("F1:\n");
+        Utils.cout("  At    5 docs:   " + new DecimalFormat("#0.0000").format(apaf[0]) + "\n");
+        Utils.cout("  At   10 docs:   " + new DecimalFormat("#0.0000").format(apaf[1]) + "\n");
+        Utils.cout("  At   20 docs:   " + new DecimalFormat("#0.0000").format(apaf[2]) + "\n");
+        Utils.cout("  At   50 docs:   " + new DecimalFormat("#0.0000").format(apaf[3]) + "\n");
+        Utils.cout("  At  100 docs:   " + new DecimalFormat("#0.0000").format(apaf[4]) + "\n");
+        Utils.cout("Average nDCG (non-interpolated) for all rel docs (averaged over queries)\n");
+        Utils.cout("                  " + new DecimalFormat("#0.0000").format(ndcg) + "\n");
     }
 
     /**
@@ -102,7 +116,7 @@ public class TrecEval
         byte[] dataB = new byte[(int) qrelFile.length()];
         fin.read(dataB);
         fin.close();
-        String[] data = new String(dataB, "UTF-8").split("\\s|\\n");
+        String[] data = new String(dataB, "UTF-8").replaceAll("\\r\\n", "\n").split("\\s|\\n");
 
         /*
         Now, take the values from the data array (four at a time) and put them in a
@@ -125,8 +139,14 @@ public class TrecEval
                 qrel.put(data[i], new HashMap<String, Double>());
                 numrel.put(data[i], 0D);
             }
-            qrel.get(data[i]).put(data[i + 2], Double.valueOf(data[i + 3]));
-            numrel.put(data[i], numrel.get(data[i]) + Double.valueOf(data[i + 3]));
+            if(!qrel.get(data[i]).containsKey(data[i + 2]))
+            {
+                qrel.get(data[i]).put(data[i + 2], 0D);
+            }
+            double prevGrade = qrel.get(data[i]).get(data[i + 2]);
+            double currGrade = Double.valueOf(data[i + 3]);
+            qrel.get(data[i]).put(data[i + 2], Math.max(prevGrade, currGrade));
+            numrel.put(data[i], numrel.get(data[i]) - prevGrade + currGrade);
         }
 
         /* The following code snippet tests the above data structure. */
@@ -150,7 +170,7 @@ public class TrecEval
         dataB = new byte[(int) trecFile.length()];
         fin.read(dataB);
         fin.close();
-        data = new String(dataB, "UTF-8").split("\\s|\\n");
+        data = new String(dataB, "UTF-8").replaceAll("\\r\\n", "\n").split("\\s|\\n");
 
         /* Process the trec_file data in much the same manner as above. */
         TreeMap<String, HashMap<String, Double>> trec = new TreeMap<>();
@@ -177,14 +197,17 @@ public class TrecEval
         /* Initialize some arrays. */
         double[] recalls = new double[] {0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
         int[] cutoffs    = new int[] {5, 10, 15, 20, 30, 100, 200, 500, 1000};
+        int[] f1s        = new int[] {5, 10, 20, 50, 100};
         int numTopics = 0;
         int totNumRet = 0;
         double totNumRel = 0;
         double totNumRelRet = 0;
         double sumAvgPrec = 0;
         double sumRPrec = 0;
+        double sumNDcg = 0;
         double[] sumPrecAtCutoffs = new double[cutoffs.length];
         double[] sumPrecAtRecalls = new double[recalls.length];
+        double[] sumPrecAtF1s     = new double[f1s.length];
 
         /* Now, let's process the data from trec_file to get results. */
         for(String topicId : trec.keySet())
@@ -195,10 +218,14 @@ public class TrecEval
                 numTopics++;
                 /* Hash pointer. */
                 HashMap<String, Double> href = trec.get(topicId);
+                /* Rank list. */
+                double[] rankList = new double[1000];
                 /* Precision list. */
                 double[] precList = new double[1001];
                 /* Recall list. */
                 double[] recList = new double[1001];
+                /* F1 list. */
+                double[] f1List = new double[1001];
                 /* Initialize the number retrieved. */
                 int numRet = 0;
                 /* Initialize the number relevant retrieved. */
@@ -206,7 +233,7 @@ public class TrecEval
                 /* Initialize sum precision. */
                 double sumPrec = 0;
                 /* Initialize the priority queue. */
-                Queue q = new Queue();
+                Queue q = new Queue(Properties.KEY_TRECEVAL);
 
                 /*
                 Now, sort Document IDs based on scores and calculate stats.
@@ -226,9 +253,11 @@ public class TrecEval
                     {
                         sumPrec += qrel.get(topicId).get(nsp.getNode()) * (1 + numRelRet) / numRet;
                         numRelRet += qrel.get(topicId).get(nsp.getNode());
+                        rankList[numRet - 1] = qrel.get(topicId).get(nsp.getNode());
                     }
                     precList[numRet] = numRelRet / numRet;
                     recList[numRet] = numRelRet / numrel.get(topicId);
+                    f1List[numRet] = (2 * precList[numRet] * recList[numRet]) / (precList[numRet] + recList[numRet]);
                     if(numRet >= 1000)
                     {
                         break;
@@ -236,11 +265,27 @@ public class TrecEval
                 }
                 double avgPrec = sumPrec / numrel.get(topicId);
 
+                /* Calculate the discounted cumulative gain. */
+                double dcg = rankList[0];
+                for(int i = 1; i < 1000; i++)
+                {
+                    dcg += rankList[i] / Math.log(i + 1);
+                }
+                Arrays.sort(rankList);
+                ArrayUtils.reverse(rankList);
+                double dcgSortDesc = rankList[0];
+                for(int i = 1; i < 1000; i++)
+                {
+                    dcgSortDesc += rankList[i] / Math.log(i + 1);
+                }
+                double nDcg = (dcg == 0 && dcgSortDesc == 0) ? 0 : dcg / dcgSortDesc;
+
                 /* If necessary, fill out the remainder of the precision and recall lists. */
                 for(int i = numRet + 1; i <= 1000; i++)
                 {
                     precList[i] = numRelRet / i;
                     recList[i] = numRelRet / numrel.get(topicId);
+                    f1List[i] = (2 * precList[numRet] * recList[numRet]) / (precList[numRet] + recList[numRet]);
                 }
 
                 /*
@@ -308,11 +353,22 @@ public class TrecEval
                     }
                 }
 
+                /* Calculate precision at F1 levels. */
+                double[] precAtF1s = new double[f1s.length];
+                i = 0;
+                for(int f1 : f1s)
+                {
+                    precAtF1s[i++] = f1List[f1];
+                }
+
                 /* If requested, print statistics on a per-query basis. */
                 if(printAllQueries)
                 {
-                    output(Integer.valueOf(topicId), numRet, (int) numrel.get(topicId).doubleValue(),
-                          (int) numRelRet, precAtRecalls, avgPrec, precAtCutoffs, rPrec);
+                    output(Integer.valueOf(topicId), numRet,
+                           (int) numrel.get(topicId).doubleValue(), (int) numRelRet,
+                           precAtRecalls, avgPrec,
+                           precAtCutoffs, rPrec,
+                           precAtF1s, nDcg);
                 }
 
                 /* Update running sums for overall statistics. */
@@ -328,15 +384,21 @@ public class TrecEval
                 {
                     sumPrecAtRecalls[i] += precAtRecalls[i];
                 }
+                for(i = 0; i < f1s.length; i++)
+                {
+                    sumPrecAtF1s[i] += precAtF1s[i];
+                }
 
                 sumAvgPrec += avgPrec;
                 sumRPrec   += rPrec;
+                sumNDcg    += nDcg;
             }
         }
 
         /* Calculate summary statistics. */
         double[] avgPrecAtCutoffs = new double[cutoffs.length];
         double[] avgPrecAtRecalls = new double[recalls.length];
+        double[] avgPrecAtF1s     = new double[f1s.length];
         for(int i = 0; i < cutoffs.length; i++)
         {
             avgPrecAtCutoffs[i] = sumPrecAtCutoffs[i] / numTopics;
@@ -345,11 +407,19 @@ public class TrecEval
         {
             avgPrecAtRecalls[i] = sumPrecAtRecalls[i] / numTopics;
         }
+        for(int i = 0; i < f1s.length; i++)
+        {
+            avgPrecAtF1s[i] = sumPrecAtCutoffs[i] / numTopics;
+        }
         double meanAvgPrec = sumAvgPrec / numTopics;
         double avgRPrec    = sumRPrec   / numTopics;
+        double avgNDcg     = sumNDcg    / numTopics;
 
-        output(numTopics, totNumRet, (int) totNumRel, (int) totNumRelRet,
-               avgPrecAtRecalls, meanAvgPrec, avgPrecAtCutoffs, avgRPrec);
+        output(numTopics, totNumRet,
+               (int) totNumRel, (int) totNumRelRet,
+               avgPrecAtRecalls, meanAvgPrec,
+               avgPrecAtCutoffs, avgRPrec,
+               avgPrecAtF1s, avgNDcg);
     }
 
     /**

@@ -58,6 +58,5 @@ Calaca.factory('calacaService', ['$q', 'esFactory', '$location', function($q, el
     return {
         "search": search
     };
-
-    }]
-);
+}]);
+/* End of services.js */

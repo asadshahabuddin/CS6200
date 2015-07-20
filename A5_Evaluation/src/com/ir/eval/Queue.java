@@ -3,6 +3,7 @@ package com.ir.eval;
 /* Import list */
 import java.util.Comparator;
 import java.util.PriorityQueue;
+import com.ir.global.Properties;
 
 /**
  * Author : Asad Shahabuddin
@@ -14,7 +15,7 @@ public class Queue
     private PriorityQueue<NodeScorePair> queue;
 
     /**
-     * Comparator class for the priority queue.
+     * Secondary sort.
      */
     static class NSPComparator implements Comparator<NodeScorePair>
     {
@@ -31,11 +32,44 @@ public class Queue
     }
 
     /**
-     * Constructor.
+     * Ascending order.
      */
-    public Queue()
+    static class AscComparator implements Comparator<NodeScorePair>
     {
-        queue = new PriorityQueue<>(1000, new NSPComparator());
+        @Override
+        public int compare(NodeScorePair nsp1, NodeScorePair nsp2)
+        {
+            return Double.valueOf(nsp1.getScore()).compareTo(Double.valueOf(nsp2.getScore()));
+        }
+    }
+
+    /**
+     * Descending order.
+     */
+    static class DescComparator implements Comparator<NodeScorePair>
+    {
+        @Override
+        public int compare(NodeScorePair nsp1, NodeScorePair nsp2)
+        {
+            return Double.valueOf(nsp2.getScore()).compareTo(Double.valueOf(nsp1.getScore()));
+        }
+    }
+
+    /**
+     * Constructor.
+     * @param evalType
+     *            A key indicating the comparator type.
+     */
+    public Queue(int evalType)
+    {
+        if(evalType == Properties.KEY_TRECEVAL)
+        {
+            queue = new PriorityQueue<>(1000, new NSPComparator());
+        }
+        else if(evalType == Properties.KEY_IREVAL)
+        {
+            queue = new PriorityQueue<>(1000, new AscComparator());
+        }
     }
 
     /**
@@ -43,7 +77,7 @@ public class Queue
      * @param nsp
      *            The NodeScorePair object.
      * @return
-     *            true if the object was added successfully.
+     *            true iff the object was added successfully.
      */
     public boolean add(NodeScorePair nsp)
     {
@@ -51,7 +85,12 @@ public class Queue
         {
             return false;
         }
-        return queue.offer(nsp);
+        queue.offer(nsp);
+        if(queue.size() == 1001)
+        {
+            queue.remove();
+        }
+        return true;
     }
 
     /**
@@ -66,6 +105,17 @@ public class Queue
             return null;
         }
         return queue.remove();
+    }
+
+    /**
+     * Reverse the priority queue.
+     */
+    public void reverse()
+    {
+        PriorityQueue<NodeScorePair> revQueue =
+            new PriorityQueue<>(queue.size(), new DescComparator());
+        revQueue.addAll(queue);
+        queue = revQueue;
     }
 }
 /* End of Queue.java */

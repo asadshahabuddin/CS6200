@@ -35,13 +35,24 @@
             <section class='results'>
                 <p class='no-results' ng-show='!results.length && !loading'>No Results</p>
                 <article class='result' ng-repeat='result in results'>
-                    <h2><a class="result-title" href="{{result.docno}}" target="_blank">{{result.title}}</a></h2>
-                    <span class="result-url">{{result.docno}}</span>
-                    <p class="result-desc">{{abstract(result)}}</p>
+                    <a class='result-title' href='{{result.docno}}' target='_blank'>{{filter(result)}}</a>
+                    <select ng-model='relevance' ng-change='updateRelevance(result, relevance)' class='result-dropdown'>
+                        <!-- option value="" disabled="disabled" selected="selected">Relevance:</option -->
+                        <option value='0'>Irrelevant</option>
+                        <option value='1'>Relevant</option>
+                        <option value='2'>Very relevant</option>
+                    </select>
+                    <br/>
+                    <span class='result-url'>{{result.docno}}</span>
+                    <p class='result-desc'>{{abstract(result)}}</p>
                 </article>
+                <span class='eval-stat'><span class="bold-span">{{evalCount}}</span> documents have been evaluated.</span><br/>
+                <button ng-show='results.length > 0' ng-click='write(qid)' class='submit-button'>Submit</button>
+                <input ng-show='results.length > 0' ng-model="qid" class="qid-field" type="text" placeholder="Query ID"/><br/>
             </section>
             <section class='pagination-controls'>
-                <button ng-click='search(-1)' ng-show='paginationEnabled() && offset !== 0' class='pager'>Previous</button><button ng-click='search(1)' ng-show='paginationEnabled()' class='pager'>Next</button>
+                <button ng-show='paginationEnabled() && offset !== 0' ng-click='search(-1)' class='pager'>Previous</button>
+                <button ng-show='paginationEnabled()' ng-click='search(1)' class='pager'>Next</button>
             </section>
         </main>
 
