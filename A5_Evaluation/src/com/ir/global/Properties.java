@@ -16,7 +16,8 @@ public class Properties
     public static final double B         = 0.75;
 
     /* Directories and files. */
-    public static final String FILE_DOCLEN   = "doclen.txt";
+    public static final String FILE_DOCLEN = "doclen.txt";
+    public static final String FILE_PRDATA = "pr-data.txt";
 
     /* ElasticSearch properties. */
     public static final String CLUSTER_NAME = "leoscluster";

@@ -5,6 +5,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.TreeMap;
 import java.util.HashMap;
+import java.io.FileWriter;
 import com.ir.global.Utils;
 import java.io.IOException;
 import java.io.FileInputStream;
@@ -79,6 +80,26 @@ public class TrecEval
     }
 
     /**
+     * Output the precision and recall data to the file system.
+     * @param precList
+     *            Precision@k values.
+     * @param recList
+     *            Recall@k values.
+     * @throws IOException
+     */
+    public void writeGraphData(String qid, double[] precList, double[] recList)
+        throws IOException
+    {
+        FileWriter fw = new FileWriter(Properties.FILE_PRDATA, true);
+        fw.write(qid + " " + String.valueOf(precList[1]) + " " + String.valueOf(recList[1]) + "\n");
+        for(int i = 20; i <= 1000; i += 20)
+        {
+            fw.write(qid + " " + String.valueOf(precList[i]) + " " + String.valueOf(recList[i]) + "\n");
+        }
+        fw.close();
+    }
+
+    /**
      * Information Retrieval evaluation function.
      * @param args
      *            Program arguments.
@@ -144,7 +165,7 @@ public class TrecEval
                 qrel.get(data[i]).put(data[i + 2], 0D);
             }
             double prevGrade = qrel.get(data[i]).get(data[i + 2]);
-            double currGrade = Double.valueOf(data[i + 3]);
+            double currGrade = Double.valueOf(data[i + 3]) < 2 ? Double.valueOf(data[i + 3]) : 1;
             qrel.get(data[i]).put(data[i + 2], Math.max(prevGrade, currGrade));
             numrel.put(data[i], numrel.get(data[i]) - prevGrade + currGrade);
         }
@@ -370,6 +391,9 @@ public class TrecEval
                            precAtCutoffs, rPrec,
                            precAtF1s, nDcg);
                 }
+
+                /* Output the precision-recall plot data to the file system. */
+                writeGraphData(topicId, precList, recList);
 
                 /* Update running sums for overall statistics. */
                 totNumRet    += numRet;
