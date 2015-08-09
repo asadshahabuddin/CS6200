@@ -30,26 +30,25 @@ public class FeatureMatrix
     }
 
     /**
-     * Create a set of featured document IDs.
+     * Create a map of query and document IDs.
      * @return
-     *            The set of relevant document IDs.
+     *            The map of query and document IDs.
      * @throws IOException
      */
-    @SuppressWarnings("unused")
-    public HashSet<String> createDocList()
-        throws IOException
+    public HashMap<String, HashSet<String>> createQueryDocList()
+                                                                                                                                                            throws IOException
     {
-        File file = new File(Properties.FILE_QRELS);
+        File file = new File(Properties.FILE_DOCLIST);
         if(!file.exists())
         {
-            BufferedReader br = new BufferedReader(new FileReader(file));
-            FileWriter fw = new FileWriter(Properties.FILE_DOCLIST);
+            BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_QRELS));
+            FileWriter fw = new FileWriter(file);
             StringBuilder sb = new StringBuilder();
             String line;
 
             while((line = br.readLine()) != null)
             {
-                sb.append(line.split(" ")[2] + "\n");
+                sb.append(line.split(" ")[0] + " " + line.split(" ")[2] + "\n");
             }
 
             /* Output the document list to file system and close the file handles. */
@@ -57,26 +56,31 @@ public class FeatureMatrix
             fw.close();
             br.close();
         }
-        return getDocSet();
+        return getQueryDocMap();
     }
 
     /**
-     * Retrieve the set of relevant document IDs.
+     * Retrieve the map of query and document IDs.
      * @return
-     *            The set of relevant document IDs.
+     *            The map of query and document IDs.
      * @throws IOException
      */
-    public HashSet<String> getDocSet()
+    public HashMap<String, HashSet<String>> getQueryDocMap()
         throws IOException
     {
-        HashSet<String> docs = new HashSet<String>();
+        HashMap<String, HashSet<String>> map = new HashMap<String, HashSet<String>>();
         BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_DOCLIST));
         String line;
         while((line = br.readLine()) != null)
         {
-            docs.add(line);
+            String[] fields = line.split(" ");
+            if(!map.containsKey(fields[0]))
+            {
+                map.put(fields[0], new HashSet<String>());
+            }
+            map.get(fields[0]).add(fields[1]);
         }
-        return docs;
+        return map;
     }
 
     /**
@@ -103,9 +107,11 @@ public class FeatureMatrix
 
     /**
      * Populate Okapi TF values in the feature matrix.
+     * @param qdMap
+     *            The map of query and document IDs.
      * @throws IOException
      */
-    public void populateOkapiTfValues()
+    public void populateOkapiTfValues(HashMap<String, HashSet<String>> qdMap)
         throws IOException
     {
         BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_OKAPITF));
@@ -114,7 +120,7 @@ public class FeatureMatrix
         while((line = br.readLine()) != null)
         {
             String[] fields = line.split(" ");
-            if(featureMatrix.containsKey(fields[0]))
+            if(qdMap.get(fields[0]).contains(fields[2]))
             {
                 if(!featureMatrix.get(fields[0]).containsKey(fields[2]))
                 {
@@ -127,9 +133,11 @@ public class FeatureMatrix
 
     /**
      * Populate TF-IDF values in the feature matrix.
+     * @param qdMap
+     *            The map of query and document IDs.
      * @throws IOException
      */
-    public void populateTfIdfValues()
+    public void populateTfIdfValues(HashMap<String, HashSet<String>> qdMap)
         throws IOException
     {
         BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_TFIDF));
@@ -138,7 +146,7 @@ public class FeatureMatrix
         while((line = br.readLine()) != null)
         {
             String[] fields = line.split(" ");
-            if(featureMatrix.containsKey(fields[0]))
+            if(qdMap.get(fields[0]).contains(fields[2]))
             {
                 if(!featureMatrix.get(fields[0]).containsKey(fields[2]))
                 {
@@ -151,9 +159,11 @@ public class FeatureMatrix
 
     /**
      * Populate Okapi BM25 values in the feature matrix.
+     * @param qdMap
+     *            The map of query and document IDs.
      * @throws IOException
      */
-    public void populateOkapiBm25Values()
+    public void populateOkapiBm25Values(HashMap<String, HashSet<String>> qdMap)
         throws IOException
     {
         BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_OKAPIBM25));
@@ -162,7 +172,7 @@ public class FeatureMatrix
         while((line = br.readLine()) != null)
         {
             String[] fields = line.split(" ");
-            if(featureMatrix.containsKey(fields[0]))
+            if(qdMap.get(fields[0]).contains(fields[2]))
             {
                 if(!featureMatrix.get(fields[0]).containsKey(fields[2]))
                 {
@@ -175,9 +185,11 @@ public class FeatureMatrix
 
     /**
      * Populate Unigram LM (w/ Laplace smoothing) values in the feature matrix.
+     * @param qdMap
+     *            The map of query and document IDs.
      * @throws IOException
      */
-    public void populateLmLaplaceValues()
+    public void populateLmLaplaceValues(HashMap<String, HashSet<String>> qdMap)
         throws IOException
     {
         BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_LMLAPLACE));
@@ -186,7 +198,7 @@ public class FeatureMatrix
         while((line = br.readLine()) != null)
         {
             String[] fields = line.split(" ");
-            if(featureMatrix.containsKey(fields[0]))
+            if(qdMap.get(fields[0]).contains(fields[2]))
             {
                 if(!featureMatrix.get(fields[0]).containsKey(fields[2]))
                 {
@@ -199,9 +211,11 @@ public class FeatureMatrix
 
     /**
      * Populate Unigram LM (w/ JM smoothing) values in the feature matrix.
+     * @param qdMap
+     *            The map of query and document IDs.
      * @throws IOException
      */
-    public void populateLmJmValues()
+    public void populateLmJmValues(HashMap<String, HashSet<String>> qdMap)
         throws IOException
     {
         BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_LMJM));
@@ -210,7 +224,7 @@ public class FeatureMatrix
         while((line = br.readLine()) != null)
         {
             String[] fields = line.split(" ");
-            if(featureMatrix.containsKey(fields[0]))
+            if(qdMap.get(fields[0]).contains(fields[2]))
             {
                 if(!featureMatrix.get(fields[0]).containsKey(fields[2]))
                 {
@@ -223,9 +237,11 @@ public class FeatureMatrix
 
     /**
      * Populate QREL relevance values in the feature matrix.
+     * @param qdMap
+     *            The map of query and document IDs.
      * @throws IOException
      */
-    public void populateLabels()
+    public void populateLabels(HashMap<String, HashSet<String>> qdMap)
         throws IOException
     {
         BufferedReader br = new BufferedReader(new FileReader(Properties.FILE_QRELS));
@@ -234,7 +250,8 @@ public class FeatureMatrix
         while((line = br.readLine()) != null)
         {
             String[] fields = line.split(" ");
-            if(featureMatrix.containsKey(fields[0]))
+            if(featureMatrix.containsKey(fields[0]) &&
+               qdMap.get(fields[0]).contains(fields[2]))
             {
                 if(!featureMatrix.get(fields[0]).containsKey(fields[2]))
                 {
@@ -252,7 +269,10 @@ public class FeatureMatrix
     public void writeFeatureMatrix()
         throws IOException
     {
-        FileWriter fw = new FileWriter(Properties.FILE_FEATUREMATRIX);
+        FileWriter trainFw  = new FileWriter(Properties.FILE_TRAIN);
+        FileWriter testFw   = new FileWriter(Properties.FILE_TEST);
+        FileWriter resultFw = new FileWriter(Properties.FILE_RESULT);
+
         for(String qid : featureMatrix.keySet())
         {
             StringBuilder sb = new StringBuilder();
@@ -266,38 +286,48 @@ public class FeatureMatrix
                           e.getValue()[4] + " " +
                           e.getValue()[5] + "\n");
             }
-            fw.write(sb.toString());
+            if(Properties.trainingQueries.contains(qid))
+            {
+                trainFw.write(sb.toString());
+            }
+            else
+            {
+                testFw.write(sb.toString().replace("1.0\n", "0.0\n"));
+                resultFw.write(sb.toString());
+            }
         }
-        fw.close();
+
+        /* Close the file write handles. */
+        trainFw.close();
+        testFw.close();
+        resultFw.close();
     }
 
     /**
      * Create feature matrix and output it to the file system.
      * @param queries
      *            The list of queries.
+     * @param qdMap
+     *            The map of query and document IDs.
      * @throws IOException
      */
-    public void createFeatureMatrix(ArrayList<String> queries)
+    public void createFeatureMatrix(ArrayList<String> queries,
+                                    HashMap<String, HashSet<String>> qdMap)
         throws IOException
     {
         /* Populate keys for the feature matrix. */
-        int count = 0;
         for(String query : queries)
         {
             featureMatrix.put(query, new HashMap<String, double[]>());
-            if(++count == 20)
-            {
-                break;
-            }
         }
 
         /* Populate features. */
-        populateOkapiTfValues();
-        populateTfIdfValues();
-        populateOkapiBm25Values();
-        populateLmLaplaceValues();
-        populateLmJmValues();
-        populateLabels();
+        populateOkapiTfValues(qdMap);
+        populateTfIdfValues(qdMap);
+        populateOkapiBm25Values(qdMap);
+        populateLmLaplaceValues(qdMap);
+        populateLmJmValues(qdMap);
+        populateLabels(qdMap);
 
         /* Output feature matrix to the file system. */
         writeFeatureMatrix();
@@ -313,8 +343,9 @@ public class FeatureMatrix
         FeatureMatrix fm = new FeatureMatrix();
         try
         {
+            HashMap<String, HashSet<String>> queryDocMap = fm.createQueryDocList();
             ArrayList<String> queries = fm.getQueries();
-            fm.createFeatureMatrix(queries);
+            fm.createFeatureMatrix(queries, queryDocMap);
         }
         catch(IOException ioe)
         {

@@ -23,5 +23,12 @@
             <artifactId>mahout-core</artifactId>
             <version>0.9</version>
         </dependency>
+
+        <!-- WEKA -->
+        <dependency>
+            <groupId>nz.ac.waikato.cms.weka</groupId>
+            <artifactId>weka-stable</artifactId>
+            <version>3.6.6</version>
+        </dependency>
     </dependencies>
 </project>
