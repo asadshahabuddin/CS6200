@@ -3,7 +3,6 @@ package com.ir.sc;
 /* Import list */
 import java.io.*;
 import org.jsoup.Jsoup;
-import java.util.Random;
 import java.util.HashMap;
 import com.ir.global.Utils;
 import com.ir.global.Properties;
@@ -61,7 +60,7 @@ public class Indexer
     }
 
     /**
-     * Create a map of document names with spam/ham classification.
+     * Create a map of document names and their spam/ham classification.
      * @param file
      *            The input file.
      * @throws IOException
@@ -114,7 +113,7 @@ public class Indexer
      *            The aforementioned map.
      * @throws ClassNotFoundException, IOException
      */
-    public HashMap<String, String> getTrainMap()
+    public static HashMap<String, String> getTrainMap()
         throws ClassNotFoundException, IOException
     {
         FileInputStream fin = new FileInputStream(Properties.FILE_TRAIN_MAP);
@@ -131,7 +130,7 @@ public class Indexer
      *            The aforementioned map.
      * @throws ClassNotFoundException, IOException
      */
-    public HashMap<String, String> getTestMap()
+    public static HashMap<String, String> getTestMap()
         throws ClassNotFoundException, IOException
     {
         FileInputStream fin = new FileInputStream(Properties.FILE_TEST_MAP);
@@ -223,16 +222,6 @@ public class Indexer
     }
 
     /**
-     * Generate random 0s and 1s.
-     * @return
-     *           0 or 1, chosen randomly.
-     */
-    public int random()
-    {
-        return new Random().nextInt(2);
-    }
-
-    /**
      * Partition spam documents into train and test data.
      * @param file
      *            The input file.
@@ -246,7 +235,7 @@ public class Indexer
         /* Determine partition. */
         if(trainSpamDocCount - curTrainSpamDocCount < spamDocCount - curSpamDocCount)
         {
-            key = (curTrainSpamDocCount == trainSpamDocCount) ? 1 : random();
+            key = (curTrainSpamDocCount == trainSpamDocCount) ? 1 : Utils.random();
         }
 
         /* Update the state based on partition. */
@@ -278,7 +267,7 @@ public class Indexer
         /* Determine partition. */
         if(trainHamDocCount - curTrainHamDocCount < hamDocCount - curHamDocCount)
         {
-            key = (curTrainHamDocCount == trainHamDocCount) ? 1 : random();
+            key = (curTrainHamDocCount == trainHamDocCount) ? 1 : Utils.random();
         }
 
         /* Update the state based on partition. */
@@ -320,7 +309,7 @@ public class Indexer
         }
 
         /* Update the index. */
-        client.prepareIndex(Properties.ES_INDEX, "document", "" + file.getName())
+        client.prepareIndex(Properties.INDEX_NAME, Properties.INDEX_TYPE, "" + file.getName())
               .setSource(XContentFactory.jsonBuilder()
                                         .startObject()
                                         .field("file_name", file.getName())
@@ -369,14 +358,14 @@ public class Indexer
         Utils.cout("\n| INDEXER |");
         Utils.cout("\n===========");
         Utils.cout("\n");
-        Utils.echo("Cluster name   - " + Properties.ES_CLUSTER);
+        Utils.echo("Cluster name   - " + Properties.CLUSTER_NAME);
         Utils.echo("Data directory - " + Properties.DIR_INPUT);
 
         Node node = null;
         try
         {
             Indexer i = new Indexer();
-            node = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.ES_CLUSTER).node();
+            node = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.CLUSTER_NAME).node();
             Client client = node.client();
             i.createDocMap(Properties.DIR_INPUT + "/full/index");
             i.calcStatistics();

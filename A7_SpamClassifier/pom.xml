@@ -16,13 +16,6 @@
             <version>1.4.4</version>
         </dependency>
 
-        <!-- JavaMail -->
-        <dependency>
-            <groupId>javax.mail</groupId>
-            <artifactId>mail</artifactId>
-            <version>1.4</version>
-        </dependency>
-
         <!-- Jsoup -->
         <dependency>
             <groupId>org.jsoup</groupId>
