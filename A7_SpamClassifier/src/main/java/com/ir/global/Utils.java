@@ -1,14 +1,20 @@
 package com.ir.global;
 
 /* Import list */
-import java.util.Map;
-import java.util.Random;
-import java.util.HashMap;
+import java.util.*;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import org.json.JSONObject;
+import org.json.JSONException;
+import java.io.BufferedReader;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.common.xcontent.*;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.termvector.TermVectorResponse;
 
 /**
  * Author : Asad Shahabuddin
@@ -17,6 +23,13 @@ import org.elasticsearch.action.search.SearchResponse;
 
 public class Utils
 {
+    private static JSONObject jsonObj;
+
+    static
+    {
+        jsonObj = null;
+    }
+
     /**
      * Output a message to the console.
      * @param o
@@ -133,6 +146,101 @@ public class Utils
             }
         }
         return results;
+    }
+
+    /**
+     * Create a term vector iterator for the specified key.
+     * @param client
+     *            The Elasticsearch client.
+     * @param key
+     *            The key.
+     * @return
+     *            An iterator for the input key.
+     * @throws IOException
+     */
+    public static Iterator<?> termVectorIterator(Client client, String key)
+        throws IOException
+    {
+        /* Execute the query and get the resultant builder. */
+        TermVectorResponse response = client.prepareTermVector()
+                                            .setIndex(Properties.INDEX_NAME)
+                                            .setType(Properties.INDEX_TYPE)
+                                            .setId(key)
+                                            .execute()
+                                            .actionGet();
+        XContentBuilder builder = XContentFactory.contentBuilder(XContentType.JSON).prettyPrint();
+        builder.startObject();
+        response.toXContent(builder, ToXContent.EMPTY_PARAMS);
+        builder.endObject();
+
+        try
+        {
+            /* Get the term vector response as a JSON object. */
+            jsonObj = new JSONObject(XContentHelper.convertToJson(builder.bytes(), false))
+                      .getJSONObject("term_vectors")
+                      .getJSONObject("body")
+                      .getJSONObject("terms");
+        }
+        catch(JSONException jsone)
+        {
+            Utils.cout("\n");
+            Utils.warning("JSON Exception>");
+            Utils.warning("Inside termVectorIterator(...) for file - " + key + "\n");
+        }
+        return jsonObj.keys();
+    }
+
+    /**
+     * Get the frequency for a key from the term vector response.
+     * @param key
+     *            The key.
+     * @return
+     *            The term frequency.
+     */
+    public static int getTermFrequency(String key)
+    {
+        int res = -1;
+        if(jsonObj == null)
+        {
+            return res;
+        }
+        try
+        {
+            res = jsonObj.getJSONObject(key).getInt("term_freq");
+        }
+        catch(JSONException jsone) {}
+        return res;
+    }
+
+    /**
+     * Split a feature matrix into labels and data.
+     * @param inputFile
+     *            The input file.
+     * @param labelFile
+     *            The label file.
+     * @param dataFile
+     *            The data file.
+     * @throws IOException
+     */
+    public static void splitFeatureMatrix(String inputFile, String labelFile, String dataFile)
+        throws IOException
+    {
+        BufferedReader br = new BufferedReader(new FileReader(inputFile));
+        FileWriter fw1 = new FileWriter(labelFile);
+        FileWriter fw2 = new FileWriter(dataFile);
+        String line;
+
+        /* Split labels and data between files. */
+        while((line = br.readLine()) != null)
+        {
+            fw1.write(line.substring(0, line.indexOf(' ')) + "\n");
+            fw2.write(line.substring(line.indexOf(' ') + 1) + "\n");
+        }
+
+        /* Close file reader and writer objects. */
+        fw2.close();
+        fw1.close();
+        br.close();
     }
 }
 /* End of Utils.java */

@@ -8,6 +8,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import com.ir.global.Utils;
 import java.io.BufferedReader;
+import java.util.LinkedHashMap;
 import com.ir.global.Properties;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.client.Client;
@@ -21,7 +22,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 
 public class ManualSpamFeatureMatrix
 {
-    private HashMap<String, String> wordMap;
+    private LinkedHashMap<String, String> wordMap;
     private HashMap<String, String> trainMap;
     private HashMap<String, String> testMap;
     private HashMap<String, StringBuilder> trainDataMap;
@@ -32,7 +33,7 @@ public class ManualSpamFeatureMatrix
      */
     public ManualSpamFeatureMatrix()
     {
-        wordMap      = new HashMap<String, String>();
+        wordMap      = new LinkedHashMap<String, String>();
         trainDataMap = new HashMap<String, StringBuilder>();
         testDataMap  = new HashMap<String, StringBuilder>();
     }
@@ -104,19 +105,24 @@ public class ManualSpamFeatureMatrix
         HashMap<String, StringBuilder> map;
         if(dataKey == Properties.KEY_TRAIN)
         {
-            fw  = new FileWriter(Properties.FILE_TRAIN_MATRIX);
+            fw  = new FileWriter(Properties.FILE_MS_TRAIN);
             map = trainDataMap;
         }
         else
         {
-            fw  = new FileWriter(Properties.FILE_TEST_MATRIX);
+            fw  = new FileWriter(Properties.FILE_MS_TEST);
             map = testDataMap;
         }
 
         /* Output data to the file system. */
         for(String key : map.keySet())
         {
-            fw.write(map.get(key).toString() + "\n");
+            String val = map.get(key).toString();
+            if(!val.substring(val.length() - 2).equals(" 0") &&
+               !val.substring(val.length() - 2).equals(" 1"))
+            {
+                fw.write(val + "\n");
+            }
         }
         fw.close();
     }
@@ -154,6 +160,12 @@ public class ManualSpamFeatureMatrix
         /* Output feature matrices to the file system. */
         writeFeatureMatrix(Properties.KEY_TRAIN);
         writeFeatureMatrix(Properties.KEY_TEST);
+        Utils.splitFeatureMatrix(Properties.FILE_MS_TRAIN,
+                                 Properties.FILE_MS_TRAIN_LABEL,
+                                 Properties.FILE_MS_TRAIN_DATA);
+        Utils.splitFeatureMatrix(Properties.FILE_MS_TEST,
+                                 Properties.FILE_MS_TEST_LABEL,
+                                 Properties.FILE_MS_TEST_DATA);
     }
 
     /**
