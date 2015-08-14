@@ -186,12 +186,13 @@ public class ManualSpamFeatureMatrix
         try
         {
             ManualSpamFeatureMatrix fm = new ManualSpamFeatureMatrix();
-            fm.initialize();
-            fm.createWordMap();
             node = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.CLUSTER_NAME).node();
             Client client = node.client();
+            fm.initialize();
+            fm.createWordMap();
             Utils.cout("\n>Creating the feature matrices\n");
             fm.createFeatureMatrices(client);
+            // Utils.createRankList(Properties.KEY_MANUAL);
         }
         catch(ClassNotFoundException cnfe)
         {

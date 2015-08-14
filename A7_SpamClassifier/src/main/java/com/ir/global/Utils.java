@@ -2,12 +2,14 @@ package com.ir.global;
 
 /* Import list */
 import java.util.*;
+import com.ir.sc.Queue;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import org.json.JSONObject;
 import org.json.JSONException;
 import java.io.BufferedReader;
+import com.ir.sc.NodeScorePair;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.common.xcontent.*;
@@ -241,6 +243,58 @@ public class Utils
         fw2.close();
         fw1.close();
         br.close();
+    }
+
+    /**
+     * Create a rank list and output it to the file system.
+     * @param unigramType
+     *            Manual/All unigram classification.
+     * @throws IOException
+     */
+    public static void createRankList(int unigramType)
+        throws IOException
+    {
+        /* Determine the data classification. */
+        BufferedReader br1;
+        BufferedReader br2;
+        FileWriter fw;
+        int pos;
+        if(unigramType == Properties.KEY_MANUAL)
+        {
+            br1 = new BufferedReader(new FileReader(Properties.FILE_MS_TEST_LABEL));
+            br2 = new BufferedReader(new FileReader(Properties.FILE_MS_PREDICT));
+            fw  = new FileWriter(Properties.FILE_MS_RANKLIST);
+            pos = 1;
+        }
+        else
+        {
+            br1 = new BufferedReader(new FileReader(Properties.FILE_AU_TEST_LABEL));
+            br2 = new BufferedReader(new FileReader(Properties.FILE_AU_PREDICT));
+            fw  = new FileWriter(Properties.FILE_AU_RANKLIST);
+            pos = 2;
+        }
+
+        /* Create a rank list using priority queue. */
+        String line1;
+        Queue q = new Queue();
+        br2.readLine();
+        while((line1 = br1.readLine()) != null)
+        {
+            q.add(new NodeScorePair(line1, Double.valueOf(br2.readLine().split(" ")[pos])));
+        }
+        q.reverse();
+
+        /* Output rank list to the file system. */
+        NodeScorePair nsp;
+        while((nsp = q.remove()) != null)
+        {
+            fw.write(nsp.getNode() + " " + nsp.getScore() + "\n");
+        }
+
+        /* Close the file reader and writer objects. */
+        fw.close();
+        br2.close();
+        br1.close();
     }
 }
 /* End of Utils.java */

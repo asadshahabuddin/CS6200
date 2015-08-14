@@ -197,12 +197,13 @@ public class AllUnigramsFeatureMatrix
             node = NodeBuilder.nodeBuilder().client(true).clusterName(Properties.CLUSTER_NAME).node();
             Client client = node.client();
             fm.initialize();
-            // fm.createWordMap(client);
-            // fm.serializeWordMap();
-            wordMap = getWordMap();
+            fm.createWordMap(client);
+            fm.serializeWordMap();
+            // wordMap = getWordMap();
             Utils.cout("\n>Statistics\n");
             Utils.cout("Total unigrams - " + wordMap.size() + "\n");
             fm.createFeatureMatrices(client);
+            // Utils.createRankList(Properties.KEY_ALL);
         }
         catch(ClassNotFoundException cnfe)
         {
