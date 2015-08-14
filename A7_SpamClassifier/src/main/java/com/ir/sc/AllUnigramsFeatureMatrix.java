@@ -101,6 +101,14 @@ public class AllUnigramsFeatureMatrix
         return map;
     }
 
+    /**
+     * Create a feature matrix of the specified type.
+     * @param client
+     *            The Elasticsearch client.
+     * @param dataType
+     *            Train/test classification key.
+     * @throws ClassNotFoundException, IOException
+     */
     public void createFeatureMatrix(Client client, int dataType)
         throws ClassNotFoundException, IOException
     {
@@ -158,6 +166,12 @@ public class AllUnigramsFeatureMatrix
         fw.close();
     }
 
+    /**
+     * Create the train and test feature matrices.
+     * @param client
+     *            The Elasticsearch client.
+     * @throws ClassNotFoundException, IOException
+     */
     public void createFeatureMatrices(Client client)
         throws ClassNotFoundException, IOException
     {
